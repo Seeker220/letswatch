@@ -6,7 +6,6 @@
     <title>Let's Watch!</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Same styles as before */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -144,8 +143,8 @@
 
         // Function to handle Play button click
         function playItem(imdbId, category) {
-            const playUrl = category === 'movies' ? `https://vidsrc.cc/v2/embed/movie/${imdbId}` : `https://vidsrc.cc/v2/embed/tv/${imdbId}`;
-            window.open(`noads.html?url=${encodeURIComponent(playUrl)}`, '_blank'); // Open noads.html
+            const playUrl = category === 'movies' ? `https://vidsrc.to/embed/movie/${imdbId}` : `https://vidsrc.to/embed/tv/${imdbId}`;
+            window.open(playUrl, '_blank');
         }
 
         // Redirect to seasons page for series
