@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seasons</title>
+    <title>TV Show Seasons</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body {
@@ -12,127 +12,113 @@
             color: #ffffff;
             margin: 0;
             padding: 20px;
+            box-sizing: border-box;
         }
         h1 {
             text-align: center;
+            font-size: 28px; /* Default font size for desktop */
+        }
+        #seasons-results {
+            margin-top: 20px;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            list-style-type: none; /* Remove bullet points */
         }
         .season-item {
-            padding: 10px;
-            border: 1px solid #333;
-            margin: 10px;
-            text-align: center;
+            padding: 15px;
+            margin: 10px 0;
+            cursor: pointer;
             background-color: #1e1e1e;
             border-radius: 5px;
+            border: 1px solid #333;
+            width: 90%; /* Make the item take up most of the screen width */
+            max-width: 600px; /* Cap the width for larger screens */
+            text-align: center;
+            transition: background-color 0.3s ease;
+        }
+        .season-item:hover {
+            background-color: #333; /* Highlight on hover */
         }
         .season-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        .episode-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .episode-item {
-            padding: 10px;
-            border: 1px solid #333;
-            margin: 10px;
-            background-color: #1e1e1e;
-            border-radius: 5px;
-        }
-        .episode-title {
-            font-size: 16px;
+            font-size: 18px; /* Default font size for desktop */
             font-weight: bold;
         }
-        .play-button {
-            background-color: #ff9900;
-            color: white;
-            border: none;
-            padding: 10px 0;
-            cursor: pointer;
-            margin-top: 10px;
-            width: 100%;
-            border-radius: 5px;
+
+        /* Small screen adjustments */
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 22px; /* Smaller title on mobile */
+            }
+            .season-title {
+                font-size: 16px; /* Adjusted font size for mobile */
+            }
         }
     </style>
 </head>
 <body>
 
-    <h1>Seasons</h1>
-    <div id="seasons-container"></div>
+    <h1>Seasons for the Show</h1>
+    <ul id="seasons-results"></ul>
 
     <script>
-        const apiKey = '5590873'; // Replace with your OMDb API key
-
-        // Function to get seasons and episodes
-        function getSeasons(imdbId) {
-            const url = `https://www.omdbapi.com/?i=${imdbId}&apikey=${apiKey}&plot=full`;
-
-            $.get(url, function(data) {
-                if (data.Response === "True") {
-                    displaySeasons(data);
-                } else {
-                    $('#seasons-container').html('<p>No seasons found</p>');
-                }
-            });
-        }
-
-        // Function to display seasons and episodes
-        function displaySeasons(data) {
-            const seasonsContainer = $('#seasons-container');
-            seasonsContainer.html(''); // Clear previous results
-
-            for (let season = 1; season <= data.totalSeasons; season++) {
-                const seasonHtml = `
-                    <div class="season-item">
-                        <div class="season-title">Season ${season}</div>
-                        <ul class="episode-list" id="season-${season}-episodes"></ul>
-                    </div>
-                `;
-                seasonsContainer.append(seasonHtml);
-                getEpisodes(data.imdbID, season);
-            }
-        }
-
-        // Function to get episodes for a season
-        function getEpisodes(imdbId, season) {
-            const url = `https://www.omdbapi.com/?i=${imdbId}&Season=${season}&apikey=${apiKey}`;
-
-            $.get(url, function(data) {
-                if (data.Response === "True") {
-                    displayEpisodes(data.Episodes, season);
-                }
-            });
-        }
-
-        // Function to display episodes
-        function displayEpisodes(episodes, season) {
-            const episodeList = $(`#season-${season}-episodes`);
-            episodeList.html(''); // Clear previous results
-
-            episodes.forEach(episode => {
-                const episodeHtml = `
-                    <li class="episode-item">
-                        <div class="episode-title">${episode.Title} (Episode ${episode.Episode})</div>
-                        <button class="play-button" onclick="playEpisode('${episode.imdbID}')">Play</button>
-                    </li>
-                `;
-                episodeList.append(episodeHtml);
-            });
-        }
-
-        // Function to handle Play button click
-        function playEpisode(imdbId) {
-            const playUrl = `https://vidsrc.to/embed/tv/${imdbId}`;
-            window.location.href = `noads.html?url=${encodeURIComponent(playUrl)}`;
-        }
-
-        // Get the IMDb ID from the query string
+        const apiKey = '250ff9ec7e817d6a95d10b822de9e227'; // Your TMDB API key
         const urlParams = new URLSearchParams(window.location.search);
         const imdbId = urlParams.get('id');
-        if (imdbId) {
-            getSeasons(imdbId);
+
+        // Function to fetch series details
+        function fetchSeriesDetails(imdbId) {
+            const tmdbUrl = `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`;
+
+            $.get(tmdbUrl).then(data => {
+                if (data && data.tv_results.length > 0) {
+                    const tmdbId = data.tv_results[0].id;
+                    fetchSeasons(tmdbId);
+                } else {
+                    $('#seasons-results').html('<p>Series not found</p>');
+                }
+            });
         }
+
+        // Function to fetch seasons for a given TMDB ID
+        function fetchSeasons(tmdbId) {
+            const url = `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${apiKey}`;
+
+            $.get(url, function(data) {
+                if (data && data.seasons) {
+                    displaySeasons(data.seasons);
+                } else {
+                    $('#seasons-results').html('<p>No seasons found</p>');
+                }
+            }).fail(function() {
+                $('#seasons-results').html('<p>Error fetching seasons</p>');
+            });
+        }
+
+        // Function to display the seasons
+        function displaySeasons(seasons) {
+            $('#seasons-results').html(''); // Clear previous results
+
+            seasons.forEach(season => {
+                const seasonNumber = season.season_number;
+                const seasonName = season.name && season.name !== `Season ${seasonNumber}` ? `: ${season.name}` : '';
+                const seasonHtml = `
+                    <li class="season-item" onclick="goToEpisodes(${seasonNumber})">
+                        <div class="season-title">Season ${seasonNumber}${seasonName}</div>
+                    </li>
+                `;
+                $('#seasons-results').append(seasonHtml);
+            });
+        }
+
+        // Function to redirect to episodes.html with selected season
+        function goToEpisodes(season) {
+            window.location.href = `episodes.html?season=${season}&id=${imdbId}`;
+        }
+
+        // Fetch the series details on page load
+        fetchSeriesDetails(imdbId);
     </script>
 
 </body>
