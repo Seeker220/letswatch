@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Show Seasons</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #seasons-results {
+            margin-top: 20px;
+            list-style-type: none; /* Remove default list styling */
+            padding: 0; /* Remove default padding */
+        }
+        .season-item {
+            padding: 10px;
+            border: 1px solid #333;
+            margin: 10px 0; /* Vertical margin for spacing */
+            cursor: pointer; /* Change cursor to pointer on hover */
+            background-color: #1e1e1e;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .season-item:hover {
+            background-color: #333; /* Highlight on hover */
+        }
+        .season-title {
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Seasons for the Show</h1>
+    <ul id="seasons-results"></ul> <!-- Change to unordered list -->
+
+    <script>
+        const apiKey = '250ff9ec7e817d6a95d10b822de9e227'; // Your TMDB API key
+        const urlParams = new URLSearchParams(window.location.search);
+        const imdbId = urlParams.get('id');
+
+        // Function to fetch series details
+        function fetchSeriesDetails(imdbId) {
+            const tmdbUrl = `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`;
+
+            $.get(tmdbUrl).then(data => {
+                if (data && data.tv_results.length > 0) {
+                    const tmdbId = data.tv_results[0].id;
+                    fetchSeasons(tmdbId);
+                } else {
+                    $('#seasons-results').html('<p>Series not found</p>');
+                }
+            });
+        }
+
+        // Function to fetch seasons for a given TMDB ID
+        function fetchSeasons(tmdbId) {
+            const url = `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${apiKey}`;
+
+            $.get(url, function(data) {
+                if (data && data.seasons) {
+                    displaySeasons(data.seasons);
+                } else {
+                    $('#seasons-results').html('<p>No seasons found</p>');
+                }
+            }).fail(function() {
+                $('#seasons-results').html('<p>Error fetching seasons</p>');
+            });
+        }
+
+        // Function to display the seasons
+        function displaySeasons(seasons) {
+            $('#seasons-results').html(''); // Clear previous results
+
+            seasons.forEach(season => {
+                const seasonNumber = season.season_number;
+                const seasonName = season.name && season.name !== `Season ${seasonNumber}` ? `: ${season.name}` : '';
+                const seasonHtml = `
+                    <li class="season-item" onclick="goToEpisodes(${seasonNumber})">
+                        <div class="season-title">Season ${seasonNumber}${seasonName}</div>
+                    </li>
+                `;
+                $('#seasons-results').append(seasonHtml);
+            });
+        }
+
+        // Function to redirect to episodes.html with selected season
+        function goToEpisodes(season) {
+            window.location.href = `episodes.html?season=${season}&id=${imdbId}`;
+        }
+
+        // Fetch the series details on page load
+        fetchSeriesDetails(imdbId);
+    </script>
+
+</body>
+</html>

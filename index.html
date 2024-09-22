@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Let's Watch!</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+        }
+        #search-input {
+            width: calc(100% - 120px);
+            padding: 10px;
+            margin-right: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        #search-button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff9900;
+            color: white;
+            cursor: pointer;
+        }
+        .section-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: 20px;
+            display: none; /* Hide initially */
+        }
+        #movies-results, #series-results {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .movie-item {
+            width: 200px;
+            padding: 10px;
+            border: 1px solid #333;
+            margin: 10px;
+            text-align: center;
+            background-color: #1e1e1e;
+            border-radius: 5px;
+        }
+        .movie-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .play-button {
+            background-color: #ff9900;
+            color: white;
+            border: none;
+            padding: 10px 0;
+            cursor: pointer;
+            margin-top: 10px;
+            width: 100%;
+            border-radius: 5px;
+        }
+        .movie-poster {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Search Movies & TV</h1>
+    <div style="text-align: center;">
+        <input type="text" id="search-input" placeholder="Enter movie or TV show title" />
+        <button id="search-button">Search</button>
+    </div>
+
+    <div class="section-title" id="movies-title">Movies</div>
+    <div id="movies-results"></div>
+
+    <div class="section-title" id="series-title">TV Series</div>
+    <div id="series-results"></div>
+
+    <script>
+        const apiKey = '5590873'; // Replace with your OMDb API key
+
+        // Function to search for movies
+        function searchMovies(query) {
+            const movieUrl = `https://www.omdbapi.com/?s=${query}&type=movie&apikey=${apiKey}`;
+            const seriesUrl = `https://www.omdbapi.com/?s=${query}&type=series&apikey=${apiKey}`;
+
+            // Fetch movies
+            $.get(movieUrl, function(data) {
+                if (data.Response === "True") {
+                    displayResults(data.Search, 'movies');
+                    $('#movies-title').show(); // Show the Movies section title
+                } else {
+                    $('#movies-results').html('<p>No movies found</p>');
+                }
+            });
+
+            // Fetch series
+            $.get(seriesUrl, function(data) {
+                if (data.Response === "True") {
+                    displayResults(data.Search, 'series');
+                    $('#series-title').show(); // Show the TV Series section title
+                } else {
+                    $('#series-results').html('<p>No series found</p>');
+                }
+            });
+        }
+
+        // Function to display the search results
+        function displayResults(results, category) {
+            const container = category === 'movies' ? '#movies-results' : '#series-results';
+            $(container).html(''); // Clear previous results
+
+            results.forEach(result => {
+                const imdbId = result.imdbID;
+                const title = result.Title;
+                const year = result.Year;
+                const poster = result.Poster !== "N/A" ? result.Poster : 'https://via.placeholder.com/200x300?text=No+Image';
+
+                const resultHtml = `
+                    <div class="movie-item">
+                        <img src="${poster}" alt="${title} poster" class="movie-poster">
+                        <div class="movie-title">${title} (${year})</div>
+                        <button class="play-button" onclick="playItem('${imdbId}', '${category}')">Play</button>
+                        ${category === 'series' ? `<button class="play-button" onclick="viewSeasons('${imdbId}')">View Seasons</button>` : ''}
+                    </div>
+                `;
+                $(container).append(resultHtml);
+            });
+        }
+
+        // Function to handle Play button click
+        function playItem(imdbId, category) {
+            const playUrl = category === 'movies' ? `https://vidsrc.to/embed/movie/${imdbId}` : `https://vidsrc.to/embed/tv/${imdbId}`;
+            window.open(playUrl, '_blank');
+        }
+
+        // Redirect to seasons page for series
+        function viewSeasons(imdbId) {
+            window.location.href = `seasons.html?id=${imdbId}`;
+        }
+
+        // Search button click handler
+        $('#search-button').on('click', function() {
+            const query = $('#search-input').val();
+            if (query) {
+                searchMovies(query);
+            }
+        });
+    </script>
+
+</body>
+</html>
