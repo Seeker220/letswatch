@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Watch Now!</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #121212;
+            color: white;
+            text-align: center;
+        }
+        iframe {
+            width: 100%;
+            height: 80vh;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Now Watching...</h1>
+    <iframe id="video-iframe" src="" allowfullscreen sandbox="allow-scripts allow-same-origin"></iframe>
+
+    <script>
+        // Get the URL from the query string
+        const urlParams = new URLSearchParams(window.location.search);
+        const playUrl = urlParams.get('url');
+        document.getElementById('video-iframe').src = playUrl;
+    </script>
+
+</body>
+</html>
