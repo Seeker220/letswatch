@@ -16,7 +16,7 @@
         }
         h1 {
             text-align: center;
-            font-size: 28px; /* Default font size for desktop */
+            font-size: 28px;
         }
         #seasons-results {
             margin-top: 20px;
@@ -24,7 +24,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            list-style-type: none; /* Remove bullet points */
+            list-style-type: none;
         }
         .season-item {
             padding: 15px;
@@ -33,26 +33,24 @@
             background-color: #1e1e1e;
             border-radius: 5px;
             border: 1px solid #333;
-            width: 90%; /* Make the item take up most of the screen width */
-            max-width: 600px; /* Cap the width for larger screens */
+            width: 90%;
+            max-width: 600px;
             text-align: center;
             transition: background-color 0.3s ease;
         }
         .season-item:hover {
-            background-color: #333; /* Highlight on hover */
+            background-color: #333;
         }
         .season-title {
-            font-size: 18px; /* Default font size for desktop */
+            font-size: 18px;
             font-weight: bold;
         }
-
-        /* Small screen adjustments */
         @media (max-width: 768px) {
             h1 {
-                font-size: 22px; /* Smaller title on mobile */
+                font-size: 22px;
             }
             .season-title {
-                font-size: 16px; /* Adjusted font size for mobile */
+                font-size: 16px;
             }
         }
     </style>
@@ -65,21 +63,7 @@
     <script>
         const apiKey = '250ff9ec7e817d6a95d10b822de9e227'; // Your TMDB API key
         const urlParams = new URLSearchParams(window.location.search);
-        const imdbId = urlParams.get('id');
-
-        // Function to fetch series details
-        function fetchSeriesDetails(imdbId) {
-            const tmdbUrl = `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`;
-
-            $.get(tmdbUrl).then(data => {
-                if (data && data.tv_results.length > 0) {
-                    const tmdbId = data.tv_results[0].id;
-                    fetchSeasons(tmdbId);
-                } else {
-                    $('#seasons-results').html('<p>Series not found</p>');
-                }
-            });
-        }
+        const tmdbId = urlParams.get('id'); // Now fetching the TMDB ID directly from the URL
 
         // Function to fetch seasons for a given TMDB ID
         function fetchSeasons(tmdbId) {
@@ -114,11 +98,11 @@
 
         // Function to redirect to episodes.html with selected season
         function goToEpisodes(season) {
-            window.location.href = `episodes.html?season=${season}&id=${imdbId}`;
+            window.location.href = `episodes.html?season=${season}&id=${tmdbId}`; // Using TMDB ID
         }
 
-        // Fetch the series details on page load
-        fetchSeriesDetails(imdbId);
+        // Fetch the seasons on page load
+        fetchSeasons(tmdbId);
     </script>
 
 </body>

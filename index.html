@@ -6,7 +6,6 @@
     <title>Let's Watch!</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        /* Same styles as before */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -36,7 +35,7 @@
             font-size: 24px;
             font-weight: bold;
             margin-top: 20px;
-            display: none; /* Hide initially */
+            display: none;
         }
         #movies-results, #series-results {
             margin-top: 20px;
@@ -74,6 +73,24 @@
             object-fit: cover;
             border-radius: 5px;
         }
+        .pagination {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .pagination button, .pagination span {
+            background-color: transparent;
+            color: #ff9900;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            margin: 0 2px;
+        }
+        .pagination .active {
+            background-color: white;
+            color: #000;
+            border-radius: 5px;
+            padding: 5px 10px;
+        }
     </style>
 </head>
 <body>
@@ -86,23 +103,33 @@
 
     <div class="section-title" id="movies-title">Movies</div>
     <div id="movies-results"></div>
+    <div class="pagination" id="movies-pagination"></div>
 
     <div class="section-title" id="series-title">TV Series</div>
     <div id="series-results"></div>
+    <div class="pagination" id="series-pagination"></div>
 
     <script>
-        const apiKey = '5590873'; // Replace with your OMDb API key
+        const apiKey = '250ff9ec7e817d6a95d10b822de9e227'; // TMDB API key
+        const imageUrl = 'https://image.tmdb.org/t/p/w500'; // TMDB image base URL
+        let currentPageMovies = 1;
+        let currentPageSeries = 1;
+        let totalPagesMovies = 1;
+        let totalPagesSeries = 1;
+        let pageGroupSize = 10; // The number of pages per pagination group
 
-        // Function to search for movies
+        // Function to search for movies and series
         function searchMovies(query) {
-            const movieUrl = `https://www.omdbapi.com/?s=${query}&type=movie&apikey=${apiKey}`;
-            const seriesUrl = `https://www.omdbapi.com/?s=${query}&type=series&apikey=${apiKey}`;
+            const movieUrl = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&api_key=${apiKey}&page=${currentPageMovies}`;
+            const seriesUrl = `https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(query)}&api_key=${apiKey}&page=${currentPageSeries}`;
 
             // Fetch movies
             $.get(movieUrl, function(data) {
-                if (data.Response === "True") {
-                    displayResults(data.Search, 'movies');
+                totalPagesMovies = data.total_pages;
+                if (data.results.length > 0) {
+                    displayResults(data.results, 'movies');
                     $('#movies-title').show(); // Show the Movies section title
+                    updatePagination('movies');
                 } else {
                     $('#movies-results').html('<p>No movies found</p>');
                 }
@@ -110,9 +137,11 @@
 
             // Fetch series
             $.get(seriesUrl, function(data) {
-                if (data.Response === "True") {
-                    displayResults(data.Search, 'series');
+                totalPagesSeries = data.total_pages;
+                if (data.results.length > 0) {
+                    displayResults(data.results, 'series');
                     $('#series-title').show(); // Show the TV Series section title
+                    updatePagination('series');
                 } else {
                     $('#series-results').html('<p>No series found</p>');
                 }
@@ -125,17 +154,17 @@
             $(container).html(''); // Clear previous results
 
             results.forEach(result => {
-                const imdbId = result.imdbID;
-                const title = result.Title;
-                const year = result.Year;
-                const poster = result.Poster !== "N/A" ? result.Poster : 'https://via.placeholder.com/200x300?text=No+Image';
+                const id = result.id;
+                const title = category === 'movies' ? result.title : result.name;
+                const year = category === 'movies' ? result.release_date.split('-')[0] : result.first_air_date.split('-')[0];
+                const poster = result.poster_path ? `${imageUrl}${result.poster_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
 
                 const resultHtml = `
                     <div class="movie-item">
                         <img src="${poster}" alt="${title} poster" class="movie-poster">
                         <div class="movie-title">${title} (${year})</div>
-                        <button class="play-button" onclick="playItem('${imdbId}', '${category}')">Play</button>
-                        ${category === 'series' ? `<button class="play-button" onclick="viewSeasons('${imdbId}')">View Seasons</button>` : ''}
+                        <button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>
+                        ${category === 'series' ? `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>` : ''}
                     </div>
                 `;
                 $(container).append(resultHtml);
@@ -149,18 +178,71 @@
         }
 
         // Redirect to seasons page for series
-        function viewSeasons(imdbId) {
-            window.location.href = `seasons.html?id=${imdbId}`;
+        function viewSeasons(id) {
+            window.location.href = `seasons.html?id=${id}`;
+        }
+
+        // Function to update pagination
+        function updatePagination(category) {
+            const paginationContainer = category === 'movies' ? '#movies-pagination' : '#series-pagination';
+            const currentPage = category === 'movies' ? currentPageMovies : currentPageSeries;
+            const totalPages = category === 'movies' ? totalPagesMovies : totalPagesSeries;
+            
+            let startPage = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
+            let endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
+
+            let paginationHtml = `<button onclick="changePage('${category}', 1)"><<</button>`;
+            if (startPage > 1) {
+                paginationHtml += `<button onclick="changePage('${category}', ${startPage - 1})"><</button>`;
+            }
+
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHtml += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage('${category}', ${i})">${i}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                paginationHtml += `<button onclick="changePage('${category}', ${endPage + 1})">></button>`;
+            }
+            paginationHtml += `<button onclick="changePage('${category}', ${totalPages})">>></button>`;
+            
+            $(paginationContainer).html(paginationHtml);
+        }
+
+        // Function to change pages
+        function changePage(category, page) {
+            if (category === 'movies') {
+                currentPageMovies = page;
+            } else {
+                currentPageSeries = page;
+            }
+            const query = $('#search-input').val();
+            if (query) {
+                searchMovies(query);
+            }
         }
 
         // Search button click handler
         $('#search-button').on('click', function() {
             const query = $('#search-input').val();
             if (query) {
+                currentPageMovies = 1;
+                currentPageSeries = 1;
                 searchMovies(query);
             }
         });
-    </script>
 
+        // Enter key press handler
+        $('#search-input').on('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const query = $('#search-input').val();
+                if (query) {
+                    currentPageMovies = 1;
+                    currentPageSeries = 1;
+                    searchMovies(query);
+                }
+            }
+        });
+
+    </script>
 </body>
 </html>
