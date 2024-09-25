@@ -20,35 +20,35 @@
             margin-top: 20px;
             display: flex;
             flex-wrap: wrap;
-            list-style-type: none; /* Remove default list styling */
-            padding: 0; /* Remove default padding */
+            list-style-type: none;
+            padding: 0;
             justify-content: center;
         }
         .episode-item {
-            width: 200px; /* Set width for each episode box */
-            height: 200px; /* Set height equal to width for square box */
+            width: 200px;
+            height: 200px;
             padding: 10px;
             border: 1px solid #333;
-            margin: 10px; /* Vertical and horizontal margin for spacing */
+            margin: 10px;
             text-align: center;
-            position: relative; /* For positioning the play button */
-            margin-bottom: 60px; /* Add margin to accommodate the play button */
+            position: relative;
+            margin-bottom: 60px;
             background-color: #1e1e1e;
             border-radius: 5px;
             transition: background-color 0.3s;
         }
         .episode-item:hover {
-            background-color: #333; /* Highlight on hover */
+            background-color: #333;
         }
         .episode-title {
-            font-size: 16px; /* Slightly smaller font size for titles */
+            font-size: 16px;
             font-weight: bold;
-            margin-top: 5px; /* Reduced margin for better fit */
+            margin-top: 5px;
         }
         .episode-poster {
-            width: 100%; /* Make poster fill the width of the box */
-            height: 140px; /* Set a fixed height for posters */
-            object-fit: contain; /* Maintain aspect ratio without stretching */
+            width: 100%;
+            height: 140px;
+            object-fit: contain;
             border-radius: 5px;
         }
         .play-button {
@@ -57,10 +57,10 @@
             border: none;
             padding: 10px 0;
             cursor: pointer;
-            font-size: 14px; /* Font size for the button */
-            width: 100%; /* Make button width same as the box */
+            font-size: 14px;
+            width: 100%;
             position: absolute;
-            bottom: -40px; /* Position the button below the box */
+            bottom: -40px;
             left: 0;
             border-radius: 5px;
         }
@@ -75,22 +75,9 @@
         const apiKey = '250ff9ec7e817d6a95d10b822de9e227'; // Your TMDB API key
         const urlParams = new URLSearchParams(window.location.search);
         const seasonNumber = urlParams.get('season');
-        const imdbId = urlParams.get('id');
+        const tmdbId = urlParams.get('id'); // Now using TMDB ID directly
 
-        // Fetch the TMDB ID based on IMDb ID
-        function fetchTmdbId(imdbId) {
-            const tmdbUrl = `https://api.themoviedb.org/3/find/${imdbId}?api_key=${apiKey}&external_source=imdb_id`;
-
-            return $.get(tmdbUrl).then(data => {
-                if (data && data.tv_results.length > 0) {
-                    return data.tv_results[0].id; // Get the TMDB ID
-                } else {
-                    throw new Error("TMDB ID not found.");
-                }
-            });
-        }
-
-        // Function to fetch episodes for a given season
+        // Function to fetch episodes for a given season and TMDB ID
         function fetchEpisodes(seasonNumber, tmdbId) {
             const url = `https://api.themoviedb.org/3/tv/${tmdbId}/season/${seasonNumber}?api_key=${apiKey}`;
 
@@ -125,16 +112,12 @@
 
         // Function to play the episode
         function playEpisode(season, episode) {
-            const playUrl = `https://vidsrc.to/embed/tv/${imdbId}/${season}/${episode}`; // Construct the play URL
+            const playUrl = `https://vidsrc.to/embed/tv/${tmdbId}/${season}/${episode}`; // Use TMDB ID for embed URL
             window.open(playUrl, '_blank'); // Open in a new tab
         }
 
-        // Fetch TMDB ID and then episodes on page load
-        fetchTmdbId(imdbId)
-            .then(tmdbId => fetchEpisodes(seasonNumber, tmdbId))
-            .catch(error => {
-                $('#episodes-results').html(`<p>${error.message}</p>`);
-            });
+        // Fetch episodes on page load using the TMDB ID directly
+        fetchEpisodes(seasonNumber, tmdbId);
     </script>
 
 </body>
