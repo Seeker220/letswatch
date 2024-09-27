@@ -3,4 +3,3 @@
 - [x] Improve search results, for example "Spiderman No way Home" gives no results.
 - [x] Maybe change from .to to .me ?
 - [ ] Retain state when coming back from a sub-page.
-- [ ] Maybe fetching vidsrc.me directly instead of API would not give ads?
