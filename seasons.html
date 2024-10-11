@@ -67,7 +67,7 @@
 
         // Function to fetch seasons for a given TMDB ID
         function fetchSeasons(tmdbId) {
-            const url = `https://api.themoviedb.org/3/tv/${tmdbId}?api_key=${apiKey}`;
+            const url = `/api/fetchSeasons?id=${tmdbId}`;
 
             $.get(url, function(data) {
                 if (data && data.seasons) {

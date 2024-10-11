@@ -120,8 +120,8 @@
 
         // Function to search for movies and series
         function searchMovies(query) {
-            const movieUrl = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&api_key=${apiKey}&page=${currentPageMovies}`;
-            const seriesUrl = `https://api.themoviedb.org/3/search/tv?query=${encodeURIComponent(query)}&api_key=${apiKey}&page=${currentPageSeries}`;
+            const movieUrl = `/api/searchMovies?q=${encodeURIComponent(query)}&page=${currentPageMovies}`;
+			const seriesUrl = `/api/searchSeries?q=${encodeURIComponent(query)}&page=${currentPageSeries}`;
 
             // Fetch movies
             $.get(movieUrl, function(data) {
