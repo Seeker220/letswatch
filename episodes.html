@@ -45,6 +45,11 @@
             font-weight: bold;
             margin-top: 5px;
         }
+        .episode-number {
+            font-size: 14px;
+            color: #ff9900; /* Color for the episode number */
+            margin-bottom: 5px; /* Space between number and title */
+        }
         .episode-poster {
             width: 100%;
             height: 140px;
@@ -79,7 +84,7 @@
 
         // Function to fetch episodes for a given season and TMDB ID
         function fetchEpisodes(seasonNumber, tmdbId) {
-            const url = `/api/fetchEpisodes?id=${tmdbId}&season=${seasonNumber}`;
+            const url = `/api/fetchEpisodes?id=${tmdbId}&season=${seasonNumber}`; // Use server-side fetching
 
             $.get(url, function(data) {
                 if (data && data.episodes) {
@@ -98,10 +103,14 @@
 
             episodes.forEach(episode => {
                 const posterUrl = episode.still_path ? `https://image.tmdb.org/t/p/w200${episode.still_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
+                
+                // Get the episode number
+                const episodeNumber = episode.episode_number;
 
                 const episodeHtml = `
                     <li class="episode-item">
                         <img src="${posterUrl}" alt="${episode.name} poster" class="episode-poster">
+                        <div class="episode-number">Ep - ${episodeNumber}</div> <!-- Episode number -->
                         <div class="episode-title">${episode.name}</div>
                         <button class="play-button" onclick="playEpisode(${seasonNumber}, ${episode.episode_number})">Play</button>
                     </li>
