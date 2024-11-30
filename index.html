@@ -163,7 +163,7 @@
                     <div class="movie-item">
                         <img src="${poster}" alt="${title} poster" class="movie-poster">
                         <div class="movie-title">${title} (${year})</div>
-                        <button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>
+						${category === 'movies' ? `<button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>` : ''}
                         ${category === 'series' ? `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>` : ''}
                     </div>
                 `;
@@ -173,7 +173,7 @@
 
         // Function to handle Play button click
         function playItem(id, category) {
-            const playUrl = category === 'movies' ? `https://moviee.tv/embed/movie/${id}` : `https://moviee.tv/embed/tv/${id}`;
+            const playUrl = `https://vidbinge.dev/embed/movie/${id}`;
             window.open(playUrl, '_blank');
         }
 
