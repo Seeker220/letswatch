@@ -96,11 +96,14 @@
             });
         }
 
-	<!-- Your existing HTML content -->
+        // Function to redirect to episodes.html with selected season
+        function goToEpisodes(season) {
+            window.location.href = `episodes.html?season=${season}&id=${tmdbId}`; // Using TMDB ID
+        }
 
-	<!-- Include Common JavaScript File -->
-	<script src="/main.js"></script>
+        // Fetch the seasons on page load
+        fetchSeasons(tmdbId);
+    </script>
+
 </body>
 </html>
-
-
