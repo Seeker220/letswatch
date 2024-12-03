@@ -175,7 +175,7 @@
         // Function to handle Play button click
         function playItem(id, category) {
             const playUrl = `https://vidbinge.dev/embed/movie/${id}`;
-            window.open(playUrl, '_blank');
+            window.location.href = playUrl;
         }
 
         // Redirect to seasons page for series
