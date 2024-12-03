@@ -122,7 +122,7 @@
         // Function to play the episode
         function playEpisode(season, episode) {
             const playUrl = `https://vidbinge.dev/embed/tv/${tmdbId}/${season}/${episode}`; // Use TMDB ID for embed URL
-            window.location.href = playUrl;
+            window.open(playUrl, '_blank'); // Open in a new tab
         }
 
         // Fetch episodes on page load using the TMDB ID directly
