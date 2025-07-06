@@ -60,7 +60,6 @@
     const urlParams = new URLSearchParams(window.location.search);
     const type = urlParams.get('type'); // tmdb-movie, tmdb-tv, anime
     const id = urlParams.get('id');
-    const imdb = urlParams.get('imdb'); // for SmashyStream only
     const season = urlParams.get('season');
     const episode = urlParams.get('episode');
     const ep = urlParams.get('ep') || '1';
@@ -70,12 +69,14 @@
     const externalSelect = document.getElementById('external-server');
     const externalControls = document.getElementById('external-controls');
 
+    const smashyIndex = 3; // SmashyStream is the 4th in all lists
+
     const embedServers = {
       'tmdb-movie': [
         ['FMovies+', `https://www.fmovies.cat/watch/movie/${id}`],
         ['RiveStream', `https://rivestream.org/watch?type=movie&id=${id}`],
         ['XPrime', `https://xprime.tv/watch/${id}`],
-        ['SmashyStream', `https://player.smashy.stream/movie/${imdb}`],
+        ['SmashyStream', null], // to be filled via IMDb
         ['AnyEmbed', `https://anyembed.xyz/movie/${id}`],
         ['VidSrc', `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`],
       ],
@@ -83,7 +84,7 @@
         ['FMovies+', `https://www.fmovies.cat/watch/tv/${id}/${season}/${episode}`],
         ['RiveStream', `https://rivestream.org/watch?type=tv&id=${id}&season=${season}&episode=${episode}`],
         ['XPrime', `https://xprime.tv/watch/${id}/${season}/${episode}`],
-        ['SmashyStream', `https://player.smashy.stream/tv/${id}?s=${season}&e=${episode}`],
+        ['SmashyStream', null], // to be filled via IMDb
         ['AnyEmbed', `https://anyembed.xyz/tv/${id}/${season}/${episode}`],
         ['VidSrc', `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoPlay=true`],
       ],
@@ -112,8 +113,29 @@
       ]
     };
 
-    function setupEmbed(type) {
+    async function fetchImdbId() {
+      const tmdbType = type === 'tmdb-movie' ? 'movie' : 'tv';
+      const res = await fetch(`/api/imdb?type=${tmdbType}&id=${id}`);
+      const data = await res.json();
+      return data.imdb_id || null;
+    }
+
+    async function setupEmbed(type) {
       const servers = embedServers[type];
+
+      // Inject SmashyStream using IMDb ID
+      if ((type === 'tmdb-movie' || type === 'tmdb-tv') && servers[smashyIndex][0] === 'SmashyStream') {
+        const imdb = await fetchImdbId();
+        if (imdb) {
+          servers[smashyIndex][1] = type === 'tmdb-movie'
+            ? `https://player.smashy.stream/movie/${imdb}`
+            : `https://player.smashy.stream/tv/${imdb}?s=${season}&e=${episode}`;
+        } else {
+          // remove if IMDb ID is not available
+          servers.splice(smashyIndex, 1);
+        }
+      }
+
       servers.forEach(([name, url], index) => {
         const option = document.createElement('option');
         option.value = url;
