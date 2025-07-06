@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Watch Now!</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    select, button {
+      margin: 10px 5px;
+      padding: 10px;
+      font-size: 1em;
+      border: none;
+      border-radius: 4px;
+    }
+    select {
+      background-color: #1e1e1e;
+      color: white;
+    }
+    button {
+      background-color: #1f1fff;
+      color: white;
+      cursor: pointer;
+    }
+    iframe {
+      width: 100%;
+      height: 80vh;
+      border: none;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Watch Now</h1>
+
+  <div id="embed-controls">
+    <label for="embed-server">Choose a server:</label>
+    <select id="embed-server"></select>
+  </div>
+
+  <iframe id="video-iframe" src="" allowfullscreen sandbox="allow-scripts allow-same-origin"></iframe>
+
+  <div id="external-controls" style="margin-top: 30px; display: none;">
+    <label for="external-server">External servers:</label>
+    <select id="external-server"></select>
+    <button onclick="openExternal()">Go</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const type = urlParams.get('type'); // tmdb-movie, tmdb-tv, anime
+    const id = urlParams.get('id');
+    const season = urlParams.get('season');
+    const episode = urlParams.get('episode');
+    const ep = urlParams.get('ep') || '1';
+
+    const iframe = document.getElementById('video-iframe');
+    const embedSelect = document.getElementById('embed-server');
+    const externalSelect = document.getElementById('external-server');
+    const externalControls = document.getElementById('external-controls');
+
+    const embedServers = {
+      'tmdb-movie': [
+        ['FMovies+', `https://www.fmovies.cat/watch/movie/${id}`],
+        ['RiveStream', `https://rivestream.org/watch?type=movie&id=${id}`],
+        ['XPrime', `https://xprime.tv/watch/${id}`],
+        ['SmashyStream', `https://player.smashy.stream/movie/${id}`],
+        ['AnyEmbed', `https://anyembed.xyz/movie/${id}`],
+        ['VidSrc', `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`],
+      ],
+      'tmdb-tv': [
+        ['FMovies+', `https://www.fmovies.cat/watch/tv/${id}/${season}/${episode}`],
+        ['RiveStream', `https://rivestream.org/watch?type=tv&id=${id}&season=${season}&episode=${episode}`],
+        ['XPrime', `https://xprime.tv/watch/${id}/${season}/${episode}`],
+        ['SmashyStream', `https://player.smashy.stream/tv/${id}?s=${season}&e=${episode}`],
+        ['AnyEmbed', `https://anyembed.xyz/tv/${id}/${season}/${episode}`],
+        ['VidSrc', `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoPlay=true`],
+      ],
+      'anime': [
+        ['Miruro', `https://www.miruro.to/watch?id=${id}&ep=${ep}`],
+        ['Gojo', `https://animetsu.to/watch/${id}?ep=${ep}`],
+        ['Anime Realms', `https://www.animerealms.org/watch?id=${id}&ep=${ep}`],
+        ['Cinemaos', `https://cinemaos.live/anime/${id}`],
+        ['AniPlay', `https://aniplaynow.live/anime/watch/${id}?host=pahe&ep=${ep}&type=sub`],
+        ['VidSrc', `https://vidsrc.cc/v2/embed/anime/ani${id}/${ep}/sub?autoPlay=true`],
+      ]
+    };
+
+    const externalServers = {
+      'tmdb-movie': [
+        ['P-Stream', `https://pstream.org/media/tmdb-movie-${id}`],
+        ['Cineby', `https://www.cineby.app/movie/${id}?play=true`],
+        ['BitCine', `https://www.bitcine.app/movie/${id}?play=true`],
+        ['VeloraTV', `https://veloratv.ru/watch/movie/${id}`],
+      ],
+      'tmdb-tv': [
+        ['P-Stream', `https://pstream.org/media/tmdb-tv-${id}`],
+        ['Cineby', `https://www.cineby.app/tv/${id}/${season}/${episode}?play=true`],
+        ['BitCine', `https://www.bitcine.app/tv/${id}/${season}/${episode}?play=true`],
+        ['VeloraTV', `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`],
+      ]
+    };
+
+    function setupEmbed(type) {
+      const servers = embedServers[type];
+      servers.forEach(([name, url], index) => {
+        const option = document.createElement('option');
+        option.value = url;
+        option.textContent = name;
+        embedSelect.appendChild(option);
+        if (index === 0) iframe.src = url;
+      });
+
+      embedSelect.addEventListener('change', function () {
+        iframe.src = this.value;
+      });
+    }
+
+    function setupExternal(type) {
+      if (!externalServers[type]) return;
+      externalControls.style.display = 'block';
+      const servers = externalServers[type];
+      servers.forEach(([name, url]) => {
+        const option = document.createElement('option');
+        option.value = url;
+        option.textContent = name;
+        externalSelect.appendChild(option);
+      });
+    }
+
+    function openExternal() {
+      const url = externalSelect.value;
+      if (url) window.open(url, '_blank');
+    }
+
+    // Init
+    if (type === 'tmdb-movie' || type === 'tmdb-tv' || type === 'anime') {
+      setupEmbed(type);
+      if (type !== 'anime') setupExternal(type);
+    } else {
+      document.body.innerHTML = '<p>Invalid type or parameters.</p>';
+    }
+  </script>
+
+</body>
+</html>
