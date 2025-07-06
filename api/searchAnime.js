@@ -2,55 +2,86 @@ const axios = require('axios');
 
 module.exports = async (req, res) => {
   const query = req.query.q;
-  const page = parseInt(req.query.page || 1);
+  const pageMovies = parseInt(req.query.moviesPage || 1);
+  const pageSeries = parseInt(req.query.seriesPage || 1);
+  const perPage = 12;
 
-  const graphqlQuery = {
-    query: `
-      query ($search: String, $page: Int) {
-        Page(page: $page, perPage: 20) {
-          pageInfo {
-            total
-            perPage
-            currentPage
-            lastPage
-            hasNextPage
-          }
-          media(search: $search, type: ANIME) {
-            id
-            title {
-              romaji
-              english
-              native
-            }
-            coverImage {
-              large
-            }
-            episodes
-            format
-            seasonYear
-            siteUrl
-          }
-        }
-      }
-    `,
-    variables: {
-      search: query,
-      page: page
-    }
-  };
+  let allAnime = [];
+  let current = 1;
+  const maxPerFetch = 50;
 
   try {
-    const response = await axios.post('https://graphql.anilist.co', graphqlQuery, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
+    while (true) {
+      const graphqlQuery = {
+        query: `
+          query ($search: String, $page: Int, $perPage: Int) {
+            Page(page: $page, perPage: $perPage) {
+              pageInfo {
+                currentPage
+                hasNextPage
+              }
+              media(search: $search, type: ANIME) {
+                id
+                title {
+                  romaji
+                  english
+                }
+                episodes
+                format
+                seasonYear
+                coverImage {
+                  large
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          search: query,
+          page: current,
+          perPage: maxPerFetch
+        }
+      };
 
-    const result = response.data.data.Page;
+      const response = await axios.post('https://graphql.anilist.co', graphqlQuery, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
+      });
+
+      const result = response.data.data.Page;
+      allAnime.push(...result.media);
+
+      if (!result.pageInfo.hasNextPage) break;
+      current++;
+    }
+
+    const animeMovies = [];
+    const animeSeries = [];
+
+    for (const anime of allAnime) {
+      const episodes = anime.episodes;
+      const format = anime.format;
+      const isMovie = (episodes === 1) || (episodes == null && !['TV', 'TV_SHORT'].includes(format));
+
+      if (isMovie) animeMovies.push(anime);
+      else animeSeries.push(anime);
+    }
+
+    const paginate = (list, page) => list.slice((page - 1) * perPage, page * perPage);
+
     res.status(200).json({
-      media: result.media,
-      totalPages: result.pageInfo.lastPage
+      animeMovies: paginate(animeMovies, pageMovies),
+      animeSeries: paginate(animeSeries, pageSeries),
+      totalPages: {
+        movies: Math.ceil(animeMovies.length / perPage),
+        series: Math.ceil(animeSeries.length / perPage)
+      },
+      currentPage: {
+        movies: pageMovies,
+        series: pageSeries
+      }
     });
   } catch (error) {
     console.error('AniList Error:', error?.response?.data || error.message);
