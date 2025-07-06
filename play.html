@@ -6,39 +6,29 @@
   <title>Watch Now!</title>
   <style>
     body {
+      font-family: Arial, sans-serif;
       background-color: #121212;
       color: white;
-      font-family: Arial, sans-serif;
       padding: 20px;
+      text-align: center;
     }
     h1 {
-      text-align: center;
-      font-size: 28px;
       margin-bottom: 10px;
     }
-    .server-section {
-      margin-bottom: 20px;
-    }
-    label {
-      font-weight: bold;
-      margin-right: 10px;
+    select, button {
+      margin: 10px 5px;
+      padding: 10px;
+      font-size: 1em;
+      border: none;
+      border-radius: 4px;
     }
     select {
-      padding: 8px;
-      font-size: 1em;
       background-color: #1e1e1e;
       color: white;
-      border: 1px solid #444;
-      border-radius: 5px;
     }
     button {
-      padding: 8px 15px;
-      margin-left: 10px;
-      font-size: 1em;
-      background-color: #ff9900;
-      color: black;
-      border: none;
-      border-radius: 5px;
+      background-color: #1f1fff;
+      color: white;
       cursor: pointer;
     }
     iframe {
@@ -51,165 +41,117 @@
 </head>
 <body>
 
-  <h1>Watch Now!</h1>
+  <h1>Watch Now</h1>
 
-  <div class="server-section">
-    <div id="embed-server-section" style="margin-bottom: 10px;">
-      <label for="embed-server">Embed Server:</label>
-      <select id="embed-server"></select>
-    </div>
-
-    <div id="external-server-section" style="margin-bottom: 10px;">
-      <label for="external-server">External Server:</label>
-      <select id="external-server"></select>
-      <button id="go-external">Go</button>
-    </div>
+  <div id="embed-controls">
+    <label for="embed-server">Choose a server:</label>
+    <select id="embed-server"></select>
   </div>
 
   <iframe id="video-iframe" src="" allowfullscreen sandbox="allow-scripts allow-same-origin"></iframe>
 
+  <div id="external-controls" style="margin-top: 30px; display: none;">
+    <label for="external-server">External servers:</label>
+    <select id="external-server"></select>
+    <button onclick="openExternal()">Go</button>
+  </div>
+
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const tmdbId = urlParams.get("tmdb");
-    const anilistId = urlParams.get("anime");
-    const season = urlParams.get("season");
-    const episode = urlParams.get("ep");
+    const type = urlParams.get('type'); // tmdb-movie, tmdb-tv, anime
+    const id = urlParams.get('id');
+    const imdb = urlParams.get('imdb'); // for SmashyStream only
+    const season = urlParams.get('season');
+    const episode = urlParams.get('episode');
+    const ep = urlParams.get('ep') || '1';
 
-    const embedSelect = document.getElementById("embed-server");
-    const externalSelect = document.getElementById("external-server");
-    const iframe = document.getElementById("video-iframe");
-    const externalSection = document.getElementById("external-server-section");
+    const iframe = document.getElementById('video-iframe');
+    const embedSelect = document.getElementById('embed-server');
+    const externalSelect = document.getElementById('external-server');
+    const externalControls = document.getElementById('external-controls');
 
-    const epNum = episode || 1;
-    let imdbId = null;
+    const embedServers = {
+      'tmdb-movie': [
+        ['FMovies+', `https://www.fmovies.cat/watch/movie/${id}`],
+        ['RiveStream', `https://rivestream.org/watch?type=movie&id=${id}`],
+        ['XPrime', `https://xprime.tv/watch/${id}`],
+        ['SmashyStream', `https://player.smashy.stream/movie/${imdb}`],
+        ['AnyEmbed', `https://anyembed.xyz/movie/${id}`],
+        ['VidSrc', `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`],
+      ],
+      'tmdb-tv': [
+        ['FMovies+', `https://www.fmovies.cat/watch/tv/${id}/${season}/${episode}`],
+        ['RiveStream', `https://rivestream.org/watch?type=tv&id=${id}&season=${season}&episode=${episode}`],
+        ['XPrime', `https://xprime.tv/watch/${id}/${season}/${episode}`],
+        ['SmashyStream', `https://player.smashy.stream/tv/${id}?s=${season}&e=${episode}`],
+        ['AnyEmbed', `https://anyembed.xyz/tv/${id}/${season}/${episode}`],
+        ['VidSrc', `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoPlay=true`],
+      ],
+      'anime': [
+        ['Miruro', `https://www.miruro.to/watch?id=${id}&ep=${ep}`],
+        ['Gojo', `https://animetsu.to/watch/${id}?ep=${ep}`],
+        ['Anime Realms', `https://www.animerealms.org/watch?id=${id}&ep=${ep}`],
+        ['Cinemaos', `https://cinemaos.live/anime/${id}`],
+        ['AniPlay', `https://aniplaynow.live/anime/watch/${id}?host=pahe&ep=${ep}&type=sub`],
+        ['VidSrc', `https://vidsrc.cc/v2/embed/anime/ani${id}/${ep}/sub?autoPlay=true`],
+      ]
+    };
 
-    const tmdbEmbedServers = [
-      { name: "FMovies+", url: (s) => `https://www.fmovies.cat/watch/${s}` },
-      { name: "RiveStream", url: (s) => `https://rivestream.org/watch?${s}` },
-      { name: "XPrime", url: (s) => `https://xprime.tv/watch/${s}` },
-      { name: "SmashyStream", url: (s) => `https://player.smashy.stream/${s}` },
-      { name: "AnyEmbed", url: (s) => `https://anyembed.xyz/${s}` },
-      { name: "VidSrc", url: (s) => `https://vidsrc.cc/v2/embed/${s}?autoPlay=true` },
-    ];
+    const externalServers = {
+      'tmdb-movie': [
+        ['P-Stream', `https://pstream.org/media/tmdb-movie-${id}`],
+        ['Cineby', `https://www.cineby.app/movie/${id}?play=true`],
+        ['BitCine', `https://www.bitcine.app/movie/${id}?play=true`],
+        ['VeloraTV', `https://veloratv.ru/watch/movie/${id}`],
+      ],
+      'tmdb-tv': [
+        ['P-Stream', `https://pstream.org/media/tmdb-tv-${id}`],
+        ['Cineby', `https://www.cineby.app/tv/${id}/${season}/${episode}?play=true`],
+        ['BitCine', `https://www.bitcine.app/tv/${id}/${season}/${episode}?play=true`],
+        ['VeloraTV', `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`],
+      ]
+    };
 
-    const tmdbExternalServers = [
-      { name: "P-Stream", url: (s) => `https://pstream.org/media/${s}` },
-      { name: "Cineby", url: (s) => `https://www.cineby.app/${s}?play=true` },
-      { name: "BitCine", url: (s) => `https://www.bitcine.app/${s}?play=true` },
-      { name: "VeloraTV", url: (s) => `https://veloratv.ru/watch/${s}` },
-    ];
-
-    const animeEmbedServers = [
-      { name: "Miruro", url: () => `https://www.miruro.to/watch?id=${anilistId}&ep=${epNum}` },
-      { name: "Gojo", url: () => `https://animetsu.to/watch/${anilistId}?ep=${epNum}` },
-      { name: "Anime Realms", url: () => `https://www.animerealms.org/watch?id=${anilistId}&ep=${epNum}` },
-      { name: "Cinemaos", url: () => `https://cinemaos.live/anime/${anilistId}` },
-      { name: "AniPlay", url: () => `https://aniplaynow.live/anime/watch/${anilistId}?host=pahe&ep=${epNum}&type=sub` },
-      { name: "VidSrc", url: () => `https://vidsrc.cc/v2/embed/anime/ani${anilistId}/${epNum}/sub?autoPlay=true` },
-    ];
-
-    function fillEmbedDropdown(sources) {
-      embedSelect.innerHTML = "";
-      sources.forEach((server, i) => {
-        const option = document.createElement("option");
-        option.value = i;
-        option.textContent = server.name;
+    function setupEmbed(type) {
+      const servers = embedServers[type];
+      servers.forEach(([name, url], index) => {
+        const option = document.createElement('option');
+        option.value = url;
+        option.textContent = name;
         embedSelect.appendChild(option);
+        if (index === 0) iframe.src = url;
+      });
+
+      embedSelect.addEventListener('change', function () {
+        iframe.src = this.value;
       });
     }
 
-    function fillExternalDropdown(sources) {
-      externalSelect.innerHTML = "";
-      sources.forEach((server, i) => {
-        const option = document.createElement("option");
-        option.value = i;
-        option.textContent = server.name;
+    function setupExternal(type) {
+      if (!externalServers[type]) return;
+      externalControls.style.display = 'block';
+      const servers = externalServers[type];
+      servers.forEach(([name, url]) => {
+        const option = document.createElement('option');
+        option.value = url;
+        option.textContent = name;
         externalSelect.appendChild(option);
       });
     }
 
-    function updateEmbedSrc(src) {
-      iframe.src = src;
+    function openExternal() {
+      const url = externalSelect.value;
+      if (url) window.open(url, '_blank');
     }
 
-    async function fetchIMDbId(type, id) {
-      const res = await fetch(`/api/imdb?type=${type}&id=${id}`);
-      const json = await res.json();
-      return json.imdb_id || null;
+    // Init
+    if (type === 'tmdb-movie' || type === 'tmdb-tv' || type === 'anime') {
+      setupEmbed(type);
+      if (type !== 'anime') setupExternal(type);
+    } else {
+      document.body.innerHTML = '<p>Invalid type or parameters.</p>';
     }
-
-    async function init() {
-      if (anilistId) {
-        fillEmbedDropdown(animeEmbedServers);
-        externalSection.style.display = "none";
-        updateEmbedSrc(animeEmbedServers[0].url());
-        embedSelect.addEventListener("change", () => {
-          updateEmbedSrc(animeEmbedServers[embedSelect.value].url());
-        });
-      } else if (tmdbId) {
-        const type = season && episode ? "tv" : "movie";
-        imdbId = await fetchIMDbId(type, tmdbId);
-
-        const embedPaths = {
-          movie: {
-            fmovies: `movie/${tmdbId}`,
-            rivestream: `type=movie&id=${tmdbId}`,
-            xprime: tmdbId,
-            smashy: `movie/${tmdbId}`,
-            anyembed: `movie/${tmdbId}`,
-            vidsrc: `movie/${tmdbId}`,
-          },
-          tv: {
-            fmovies: `tv/${tmdbId}/${season}/${episode}`,
-            rivestream: `type=tv&id=${tmdbId}&season=${season}&episode=${episode}`,
-            xprime: `${tmdbId}/${season}/${episode}`,
-            smashy: `tv/${tmdbId}?s=${season}&e=${episode}`,
-            anyembed: `tv/${tmdbId}/${season}/${episode}`,
-            vidsrc: `tv/${tmdbId}/${season}/${episode}`,
-          },
-        };
-
-        const externalPaths = {
-          movie: [
-            `tmdb-movie-${tmdbId}`,
-            `movie/${tmdbId}`,
-            `movie/${tmdbId}`,
-            `movie/${tmdbId}`,
-          ],
-          tv: [
-            `tmdb-tv-${tmdbId}`,
-            `tv/${tmdbId}/${season}/${episode}`,
-            `tv/${tmdbId}/${season}/${episode}`,
-            `tv/${tmdbId}/${season}/${episode}`,
-          ],
-        };
-
-        const currentEmbed = embedPaths[type];
-        const currentExternal = externalPaths[type];
-
-        fillEmbedDropdown(tmdbEmbedServers);
-        fillExternalDropdown(tmdbExternalServers);
-        externalSection.style.display = "block";
-
-        // Set initial embed
-        updateEmbedSrc(tmdbEmbedServers[0].url(currentEmbed.fmovies));
-
-        embedSelect.addEventListener("change", () => {
-          const pathMap = Object.values(currentEmbed);
-          const src = tmdbEmbedServers[embedSelect.value].url(pathMap[embedSelect.value]);
-          updateEmbedSrc(src);
-        });
-
-        document.getElementById("go-external").addEventListener("click", () => {
-          const link = tmdbExternalServers[externalSelect.value].url(currentExternal[externalSelect.value]);
-          window.open(link, "_blank");
-        });
-      } else {
-        document.body.innerHTML = "<h2 style='text-align:center;'>Missing TMDB or AniList ID</h2>";
-      }
-    }
-
-    init();
   </script>
+
 </body>
 </html>
