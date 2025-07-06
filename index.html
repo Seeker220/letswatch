@@ -198,42 +198,43 @@
             });
         }
 
-        function displayAnimeResults(results) {
-            $('#anime-movies-results').html('');
-            $('#anime-series-results').html('');
-            $('#anime-movies-title').hide();
-            $('#anime-series-title').hide();
+		function displayAnimeResults(results) {
+			$('#anime-movies-results').html('');
+			$('#anime-series-results').html('');
+			$('#anime-movies-title').hide();
+			$('#anime-series-title').hide();
 
-            results.forEach(anime => {
-                const title = anime.title.english || anime.title.romaji || 'Untitled';
-                const year = anime.seasonYear || 'N/A';
-                const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
-                const format = anime.format;
+			results.forEach(anime => {
+				const title = anime.title.english || anime.title.romaji || 'Untitled';
+				const year = anime.seasonYear || 'N/A';
+				const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+				const format = anime.format;
+				const episodes = anime.episodes;
 
-                let buttonHtml = '';
-                if (format === 'MOVIE') {
-                    buttonHtml = `<button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>`;
-                } else if (['TV', 'TV_SHORT', 'ONA', 'OVA'].includes(format)) {
-                    buttonHtml = `<button class="play-button" onclick="viewAnimeSeasons(${anime.id})">View Seasons</button>`;
-                }
+				const isMovie = (episodes === 1) || (episodes == null && !['TV', 'TV_SHORT'].includes(format));
 
-                const resultHtml = `
-                    <div class="movie-item">
-                        <img src="${poster}" alt="${title} poster" class="movie-poster">
-                        <div class="movie-title">${title} (${year})<br><small>${format.replace('_', ' ')}</small></div>
-                        ${buttonHtml}
-                    </div>
-                `;
+				const buttonHtml = isMovie
+					? `<button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>`
+					: `<button class="play-button" onclick="viewAnimeSeasons(${anime.id})">View Seasons</button>`;
 
-                if (format === 'MOVIE') {
-                    $('#anime-movies-results').append(resultHtml);
-                    $('#anime-movies-title').show();
-                } else if (['TV', 'TV_SHORT', 'ONA', 'OVA'].includes(format)) {
-                    $('#anime-series-results').append(resultHtml);
-                    $('#anime-series-title').show();
-                }
-            });
-        }
+				const resultHtml = `
+					<div class="movie-item">
+						<img src="${poster}" alt="${title} poster" class="movie-poster">
+						<div class="movie-title">${title} (${year})<br><small>${format.replace('_', ' ')}</small></div>
+						${buttonHtml}
+					</div>
+				`;
+
+				if (isMovie) {
+					$('#anime-movies-results').append(resultHtml);
+					$('#anime-movies-title').show();
+				} else {
+					$('#anime-series-results').append(resultHtml);
+					$('#anime-series-title').show();
+				}
+			});
+		}
+
 
         function updatePagination(category) {
             let paginationContainer, currentPage, totalPages;
