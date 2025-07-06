@@ -110,7 +110,7 @@
     function displayEpisodesJikan(episodes) {
       $('#episodes-results').html('');
       episodes.forEach(ep => {
-        const img = ep.images.jpg.image_url || 'https://via.placeholder.com/200x130?text=No+Image';
+        const img = ep.images?.jpg?.image_url || 'https://via.placeholder.com/200x130?text=No+Image';
         const title = ep.title || `Episode ${ep.mal_id}`;
         const number = ep.mal_id;
 
@@ -164,24 +164,36 @@
       loadEpisodes();
     }
 
-    async function loadEpisodes() {
-      try {
-        const jikanRes = await fetchFromJikan(currentPage);
-        const episodes = jikanRes.data;
-        totalPages = jikanRes.pagination.last_visible_page || 1;
-        displayEpisodesJikan(episodes);
-        updatePagination();
-      } catch (err) {
-        console.warn("Jikan failed, falling back to AniList...");
-        fetchFromAnilist(anilistId).then(res => {
-          const total = res.data.Media.episodes || 0;
-          displayEpisodesAnilist(total);
-          $('#pagination').html('');
-        }).catch(() => {
-          $('#episodes-results').html('<p>Could not load episodes from either source.</p>');
-        });
-      }
-    }
+	async function loadEpisodes() {
+	  try {
+		const jikanRes = await fetchFromJikan(currentPage);
+		if (jikanRes && jikanRes.data && jikanRes.pagination) {
+		  const episodes = jikanRes.data;
+		  totalPages = jikanRes.pagination.last_visible_page || 1;
+		  displayEpisodesJikan(episodes);
+		  updatePagination();
+		  return; // ✅ Stop here if Jikan worked
+		} else {
+		  throw new Error("Incomplete Jikan response");
+		}
+	  } catch (err) {
+		console.warn("Jikan failed or invalid response, falling back to AniList...", err);
+		fetchFromAnilist(anilistId)
+		  .then(res => {
+			const total = res?.data?.Media?.episodes || 0;
+			if (total > 0) {
+			  displayEpisodesAnilist(total);
+			} else {
+			  $('#episodes-results').html('<p>No episodes available.</p>');
+			}
+			$('#pagination').html('');
+		  })
+		  .catch(() => {
+			$('#episodes-results').html('<p>Could not load episodes from either source.</p>');
+		  });
+	  }
+	}
+
 
     // On page load
     loadEpisodes();
