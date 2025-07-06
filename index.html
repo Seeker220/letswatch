@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="="manifest" href="/manifest.json">
+    <link rel="manifest" href="/manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Let's Watch!</title>
@@ -38,7 +38,7 @@
             margin-top: 20px;
             display: none;
         }
-        .results-container {
+        #movies-results, #series-results, #anime-movies-results, #anime-series-results {
             margin-top: 20px;
             display: flex;
             flex-wrap: wrap;
@@ -78,7 +78,7 @@
             text-align: center;
             margin-top: 20px;
         }
-        .pagination button {
+        .pagination button, .pagination span {
             background-color: transparent;
             color: #ff9900;
             border: none;
@@ -90,47 +90,49 @@
             background-color: white;
             color: #000;
             border-radius: 5px;
+            padding: 5px 10px;
         }
     </style>
 </head>
 <body>
 
-    <h1>Search Movies, Series & Anime</h1>
+    <h1>Search Movies & TV</h1>
     <div style="text-align: center;">
-        <input type="text" id="search-input" placeholder="Enter title" />
+        <input type="text" id="search-input" placeholder="Enter movie, TV show or anime title" />
         <button id="search-button">Search</button>
     </div>
 
     <div class="section-title" id="movies-title">Movies</div>
-    <div id="movies-results" class="results-container"></div>
+    <div id="movies-results"></div>
     <div class="pagination" id="movies-pagination"></div>
 
     <div class="section-title" id="series-title">TV Series</div>
-    <div id="series-results" class="results-container"></div>
+    <div id="series-results"></div>
     <div class="pagination" id="series-pagination"></div>
 
-    <div class="section-title" id="anime-movie-title">Anime Movies</div>
-    <div id="anime-movie-results" class="results-container"></div>
-    <div class="pagination" id="anime-movie-pagination"></div>
+    <div class="section-title" id="anime-movies-title">Anime Movies</div>
+    <div id="anime-movies-results"></div>
 
     <div class="section-title" id="anime-series-title">Anime Series</div>
-    <div id="anime-series-results" class="results-container"></div>
-    <div class="pagination" id="anime-series-pagination"></div>
+    <div id="anime-series-results"></div>
+    <div class="pagination" id="anime-pagination"></div>
 
     <script>
-        const tmdbImageUrl = 'https://image.tmdb.org/t/p/w500';
-        let currentPageMovies = 1, currentPageSeries = 1, currentPageAnime = 1;
-        let totalPagesMovies = 1, totalPagesSeries = 1;
-        let animeMovieResults = [], animeSeriesResults = [];
-        const pageGroupSize = 10, pageSizeAnime = 10;
+        const apiKey = '250ff9ec7e817d6a95d10b822de9e227';
+        const imageUrl = 'https://image.tmdb.org/t/p/w500';
+        let currentPageMovies = 1;
+        let currentPageSeries = 1;
+        let currentPageAnime = 1;
+        let totalPagesMovies = 1;
+        let totalPagesSeries = 1;
+        let totalPagesAnime = 1;
+        let pageGroupSize = 10;
 
-        function searchAll(query) {
-            searchTMDB(query);
-            searchAnime(query);
-        }
+        function searchMovies(query) {
+            const movieUrl = `/api/searchMovies?q=${encodeURIComponent(query)}&page=${currentPageMovies}`;
+            const seriesUrl = `/api/searchSeries?q=${encodeURIComponent(query)}&page=${currentPageSeries}`;
 
-        function searchTMDB(query) {
-            $.get(`/api/searchMovies?q=${encodeURIComponent(query)}&page=${currentPageMovies}`, function(data) {
+            $.get(movieUrl, function(data) {
                 totalPagesMovies = data.total_pages;
                 if (data.results.length > 0) {
                     displayResults(data.results, 'movies');
@@ -141,7 +143,7 @@
                 }
             });
 
-            $.get(`/api/searchSeries?q=${encodeURIComponent(query)}&page=${currentPageSeries}`, function(data) {
+            $.get(seriesUrl, function(data) {
                 totalPagesSeries = data.total_pages;
                 if (data.results.length > 0) {
                     displayResults(data.results, 'series');
@@ -151,20 +153,26 @@
                     $('#series-results').html('<p>No series found</p>');
                 }
             });
+
+            searchAnime(query);
         }
 
         function searchAnime(query) {
-            $.get(`/api/searchAnimeMAL?q=${encodeURIComponent(query)}`, function(data) {
-                animeMovieResults = [];
-                animeSeriesResults = [];
-
-                data.data.forEach(item => {
-                    if (!item.node) return;
-                    if (item.node.media_type === 'movie') animeMovieResults.push(item.node);
-                    else animeSeriesResults.push(item.node);
-                });
-
-                displayPaginatedAnime();
+            const animeUrl = `/api/searchAnime?q=${encodeURIComponent(query)}&page=${currentPageAnime}`;
+            $.get(animeUrl, function(response) {
+                const data = response.media;
+                totalPagesAnime = response.totalPages;
+                if (data.length > 0) {
+                    displayAnimeResults(data);
+                    updatePagination('anime');
+                } else {
+                    $('#anime-movies-results').html('<p>No anime found</p>');
+                    $('#anime-series-results').html('');
+                    $('#anime-pagination').html('');
+                }
+            }).fail(function() {
+                $('#anime-movies-results').html('<p>Error fetching anime</p>');
+                $('#anime-series-results').html('');
             });
         }
 
@@ -175,99 +183,138 @@
             results.forEach(result => {
                 const id = result.id;
                 const title = category === 'movies' ? result.title : result.name;
-                const year = (category === 'movies' ? result.release_date : result.first_air_date || '----')?.split('-')[0] || '----';
-                const poster = result.poster_path ? `${tmdbImageUrl}${result.poster_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
+                const year = (category === 'movies' ? result.release_date : result.first_air_date || 'N/A').split('-')[0];
+                const poster = result.poster_path ? `${imageUrl}${result.poster_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
 
-                const html = `
+                const resultHtml = `
                     <div class="movie-item">
                         <img src="${poster}" alt="${title} poster" class="movie-poster">
                         <div class="movie-title">${title} (${year})</div>
-                        ${category === 'movies' ? `<button class="play-button">Play</button>` : ''}
-                        ${category === 'series' ? `<button class="play-button">View Seasons</button>` : ''}
+                        ${category === 'movies' ? `<button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>` : ''}
+                        ${category === 'series' ? `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>` : ''}
                     </div>
                 `;
-                $(container).append(html);
+                $(container).append(resultHtml);
             });
         }
 
-        function displayPaginatedAnime() {
-            const start = (currentPageAnime - 1) * pageSizeAnime;
-            const end = start + pageSizeAnime;
+        function displayAnimeResults(results) {
+            $('#anime-movies-results').html('');
+            $('#anime-series-results').html('');
+            $('#anime-movies-title').hide();
+            $('#anime-series-title').hide();
 
-            const pagedAnimeMovies = animeMovieResults.slice(start, end);
-            const pagedAnimeSeries = animeSeriesResults.slice(start, end);
+            results.forEach(anime => {
+                const title = anime.title.english || anime.title.romaji || 'Untitled';
+                const year = anime.seasonYear || 'N/A';
+                const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                const format = anime.format;
 
-            const display = (results, containerId, type) => {
-                const container = $(`#${containerId}`);
-                container.html('');
-                if (results.length === 0) return container.html('<p>No results found.</p>');
-                $(`#${containerId.replace('-results', '')}-title`).show();
+                let buttonHtml = '';
+                if (format === 'MOVIE') {
+                    buttonHtml = `<button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>`;
+                } else if (['TV', 'TV_SHORT', 'ONA', 'OVA'].includes(format)) {
+                    buttonHtml = `<button class="play-button" onclick="viewAnimeSeasons(${anime.id})">View Seasons</button>`;
+                }
 
-                results.forEach(item => {
-                    const title = item.title;
-                    const poster = item.main_picture?.medium || 'https://via.placeholder.com/200x300?text=No+Image';
-                    const html = `
-                        <div class="movie-item">
-                            <img src="${poster}" alt="${title}" class="movie-poster">
-                            <div class="movie-title">${title}</div>
-                            ${type === 'movie' ? `<button class="play-button">Play</button>` : ''}
-                            ${type === 'series' ? `<button class="play-button">View Seasons</button>` : ''}
-                        </div>
-                    `;
-                    container.append(html);
-                });
-            };
+                const resultHtml = `
+                    <div class="movie-item">
+                        <img src="${poster}" alt="${title} poster" class="movie-poster">
+                        <div class="movie-title">${title} (${year})<br><small>${format.replace('_', ' ')}</small></div>
+                        ${buttonHtml}
+                    </div>
+                `;
 
-            display(pagedAnimeMovies, 'anime-movie-results', 'movie');
-            display(pagedAnimeSeries, 'anime-series-results', 'series');
-
-            updatePagination('anime');
+                if (format === 'MOVIE') {
+                    $('#anime-movies-results').append(resultHtml);
+                    $('#anime-movies-title').show();
+                } else if (['TV', 'TV_SHORT', 'ONA', 'OVA'].includes(format)) {
+                    $('#anime-series-results').append(resultHtml);
+                    $('#anime-series-title').show();
+                }
+            });
         }
 
         function updatePagination(category) {
-            const container = category === 'movies' ? '#movies-pagination' :
-                              category === 'series' ? '#series-pagination' :
-                              '#anime-movie-pagination';
-            const currentPage = category === 'movies' ? currentPageMovies :
-                                category === 'series' ? currentPageSeries :
-                                currentPageAnime;
-            const totalPages = category === 'movies' ? totalPagesMovies :
-                               category === 'series' ? totalPagesSeries :
-                               Math.ceil(Math.max(animeMovieResults.length, animeSeriesResults.length) / pageSizeAnime);
+            let paginationContainer, currentPage, totalPages;
+
+            if (category === 'movies') {
+                paginationContainer = '#movies-pagination';
+                currentPage = currentPageMovies;
+                totalPages = totalPagesMovies;
+            } else if (category === 'series') {
+                paginationContainer = '#series-pagination';
+                currentPage = currentPageSeries;
+                totalPages = totalPagesSeries;
+            } else if (category === 'anime') {
+                paginationContainer = '#anime-pagination';
+                currentPage = currentPageAnime;
+                totalPages = totalPagesAnime;
+            }
 
             let startPage = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
             let endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
 
-            let html = `<button onclick="changePage('${category}', 1)"><<</button>`;
-            if (startPage > 1) html += `<button onclick="changePage('${category}', ${startPage - 1})"><</button>`;
-
-            for (let i = startPage; i <= endPage; i++) {
-                html += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage('${category}', ${i})">${i}</button>`;
+            let paginationHtml = `<button onclick="changePage('${category}', 1)"><<</button>`;
+            if (startPage > 1) {
+                paginationHtml += `<button onclick="changePage('${category}', ${startPage - 1})"><</button>`;
             }
 
-            if (endPage < totalPages) html += `<button onclick="changePage('${category}', ${endPage + 1})">></button>`;
-            html += `<button onclick="changePage('${category}', ${totalPages})">>></button>`;
+            for (let i = startPage; i <= endPage; i++) {
+                paginationHtml += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage('${category}', ${i})">${i}</button>`;
+            }
 
-            $(container).html(html);
+            if (endPage < totalPages) {
+                paginationHtml += `<button onclick="changePage('${category}', ${endPage + 1})">></button>`;
+            }
+            paginationHtml += `<button onclick="changePage('${category}', ${totalPages})">>></button>`;
+
+            $(paginationContainer).html(paginationHtml);
         }
 
         function changePage(category, page) {
-            if (category === 'movies') currentPageMovies = page;
-            else if (category === 'series') currentPageSeries = page;
-            else currentPageAnime = page;
+            if (category === 'movies') {
+                currentPageMovies = page;
+            } else if (category === 'series') {
+                currentPageSeries = page;
+            } else if (category === 'anime') {
+                currentPageAnime = page;
+            }
 
             const query = $('#search-input').val();
             if (query) {
-                if (category === 'movies' || category === 'series') searchTMDB(query);
-                else displayPaginatedAnime();
+                if (category === 'movies' || category === 'series') {
+                    searchMovies(query);
+                } else if (category === 'anime') {
+                    searchAnime(query);
+                }
             }
+        }
+
+        function playItem(id, category) {
+            const playUrl = `https://anyembed.xyz/movie/${id}`;
+            window.open(playUrl, '_blank');
+        }
+
+        function viewSeasons(id) {
+            window.location.href = `seasons.html?id=${id}`;
+        }
+
+        function playAnimeMovie(id) {
+            console.log('Anime movie play clicked for ID:', id);
+        }
+
+        function viewAnimeSeasons(id) {
+            console.log('Anime series clicked for ID:', id);
         }
 
         $('#search-button').on('click', function () {
             const query = $('#search-input').val();
             if (query) {
-                currentPageMovies = currentPageSeries = currentPageAnime = 1;
-                searchAll(query);
+                currentPageMovies = 1;
+                currentPageSeries = 1;
+                currentPageAnime = 1;
+                searchMovies(query);
             }
         });
 
@@ -275,13 +322,13 @@
             if (event.key === 'Enter') {
                 const query = $('#search-input').val();
                 if (query) {
-                    currentPageMovies = currentPageSeries = currentPageAnime = 1;
-                    searchAll(query);
+                    currentPageMovies = 1;
+                    currentPageSeries = 1;
+                    currentPageAnime = 1;
+                    searchMovies(query);
                 }
             }
         });
     </script>
-
-    <script src="/main.js"></script>
 </body>
 </html>
