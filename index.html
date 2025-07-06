@@ -98,7 +98,7 @@
 
     <h1>Search Movies & TV</h1>
     <div style="text-align: center;">
-        <input type="text" id="search-input" placeholder="Enter movie or TV show title" />
+        <input type="text" id="search-input" placeholder="Enter movie, TV show or anime title" />
         <button id="search-button">Search</button>
     </div>
 
@@ -115,14 +115,17 @@
 
     <div class="section-title" id="anime-series-title">Anime Series</div>
     <div id="anime-series-results"></div>
+    <div class="pagination" id="anime-pagination"></div>
 
     <script>
         const apiKey = '250ff9ec7e817d6a95d10b822de9e227';
         const imageUrl = 'https://image.tmdb.org/t/p/w500';
         let currentPageMovies = 1;
         let currentPageSeries = 1;
+        let currentPageAnime = 1;
         let totalPagesMovies = 1;
         let totalPagesSeries = 1;
+        let totalPagesAnime = 1;
         let pageGroupSize = 10;
 
         function searchMovies(query) {
@@ -151,21 +154,25 @@
                 }
             });
 
-            // ✅ New Anime Section
             searchAnime(query);
         }
 
         function searchAnime(query) {
-            const animeUrl = `/api/searchAnime?q=${encodeURIComponent(query)}`;
-            $.get(animeUrl, function(data) {
+            const animeUrl = `/api/searchAnime?q=${encodeURIComponent(query)}&page=${currentPageAnime}`;
+            $.get(animeUrl, function(response) {
+                const data = response.media;
+                totalPagesAnime = response.totalPages;
                 if (data.length > 0) {
                     displayAnimeResults(data);
+                    updatePagination('anime');
                 } else {
                     $('#anime-movies-results').html('<p>No anime found</p>');
                     $('#anime-series-results').html('');
+                    $('#anime-pagination').html('');
                 }
             }).fail(function() {
                 $('#anime-movies-results').html('<p>Error fetching anime</p>');
+                $('#anime-series-results').html('');
             });
         }
 
@@ -213,7 +220,7 @@
                 const resultHtml = `
                     <div class="movie-item">
                         <img src="${poster}" alt="${title} poster" class="movie-poster">
-                        <div class="movie-title">${title} (${year})</div>
+                        <div class="movie-title">${title} (${year})<br><small>${format.replace('_', ' ')}</small></div>
                         ${buttonHtml}
                     </div>
                 `;
@@ -228,27 +235,22 @@
             });
         }
 
-        function playItem(id, category) {
-            const playUrl = `https://anyembed.xyz/movie/${id}`;
-            window.open(playUrl, '_blank');
-        }
-
-        function viewSeasons(id) {
-            window.location.href = `seasons.html?id=${id}`;
-        }
-
-        function playAnimeMovie(id) {
-            console.log('Anime movie play clicked for ID:', id);
-        }
-
-        function viewAnimeSeasons(id) {
-            console.log('Anime series clicked for ID:', id);
-        }
-
         function updatePagination(category) {
-            const paginationContainer = category === 'movies' ? '#movies-pagination' : '#series-pagination';
-            const currentPage = category === 'movies' ? currentPageMovies : currentPageSeries;
-            const totalPages = category === 'movies' ? totalPagesMovies : totalPagesSeries;
+            let paginationContainer, currentPage, totalPages;
+
+            if (category === 'movies') {
+                paginationContainer = '#movies-pagination';
+                currentPage = currentPageMovies;
+                totalPages = totalPagesMovies;
+            } else if (category === 'series') {
+                paginationContainer = '#series-pagination';
+                currentPage = currentPageSeries;
+                totalPages = totalPagesSeries;
+            } else if (category === 'anime') {
+                paginationContainer = '#anime-pagination';
+                currentPage = currentPageAnime;
+                totalPages = totalPagesAnime;
+            }
 
             let startPage = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
             let endPage = Math.min(startPage + pageGroupSize - 1, totalPages);
@@ -273,13 +275,37 @@
         function changePage(category, page) {
             if (category === 'movies') {
                 currentPageMovies = page;
-            } else {
+            } else if (category === 'series') {
                 currentPageSeries = page;
+            } else if (category === 'anime') {
+                currentPageAnime = page;
             }
+
             const query = $('#search-input').val();
             if (query) {
-                searchMovies(query);
+                if (category === 'movies' || category === 'series') {
+                    searchMovies(query);
+                } else if (category === 'anime') {
+                    searchAnime(query);
+                }
             }
+        }
+
+        function playItem(id, category) {
+            const playUrl = `https://anyembed.xyz/movie/${id}`;
+            window.open(playUrl, '_blank');
+        }
+
+        function viewSeasons(id) {
+            window.location.href = `seasons.html?id=${id}`;
+        }
+
+        function playAnimeMovie(id) {
+            console.log('Anime movie play clicked for ID:', id);
+        }
+
+        function viewAnimeSeasons(id) {
+            console.log('Anime series clicked for ID:', id);
         }
 
         $('#search-button').on('click', function () {
@@ -287,6 +313,7 @@
             if (query) {
                 currentPageMovies = 1;
                 currentPageSeries = 1;
+                currentPageAnime = 1;
                 searchMovies(query);
             }
         });
@@ -297,6 +324,7 @@
                 if (query) {
                     currentPageMovies = 1;
                     currentPageSeries = 1;
+                    currentPageAnime = 1;
                     searchMovies(query);
                 }
             }
