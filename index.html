@@ -190,7 +190,7 @@
                             <div class="movie-item">
                                 <img src="${poster}" class="movie-poster">
                                 <div class="movie-title">${title} (${year})</div>
-                                <button class="play-button" onclick="viewAnimeEpisodes(${anime.id})">View Episodes</button>
+                                <button class="play-button" onclick="window.location.href='animeepisodes.html?id=${anime.id}&mal=${anime.idMal}'">View Episodes</button>
                             </div>
                         `);
                     });

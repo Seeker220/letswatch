@@ -23,6 +23,7 @@ module.exports = async (req, res) => {
               }
               media(search: $search, type: ANIME) {
                 id
+				idMal
                 title {
                   romaji
                   english
