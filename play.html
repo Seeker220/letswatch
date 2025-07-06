@@ -37,6 +37,11 @@
       border: none;
       margin-top: 20px;
     }
+    #open-embed-link {
+      font-size: 20px;
+      text-decoration: none;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
@@ -46,6 +51,7 @@
   <div id="embed-controls">
     <label for="embed-server">Choose a server:</label>
     <select id="embed-server"></select>
+    <a id="open-embed-link" href="#" target="_blank" title="Open in new tab">🔗</a>
   </div>
 
   <iframe id="video-iframe" src="" allowfullscreen sandbox="allow-scripts allow-same-origin"></iframe>
@@ -66,6 +72,7 @@
 
     const iframe = document.getElementById('video-iframe');
     const embedSelect = document.getElementById('embed-server');
+    const embedLink = document.getElementById('open-embed-link');
     const externalSelect = document.getElementById('external-server');
     const externalControls = document.getElementById('external-controls');
 
@@ -131,7 +138,6 @@
             ? `https://player.smashy.stream/movie/${imdb}`
             : `https://player.smashy.stream/tv/${imdb}?s=${season}&e=${episode}`;
         } else {
-          // remove if IMDb ID is not available
           servers.splice(smashyIndex, 1);
         }
       }
@@ -141,11 +147,18 @@
         option.value = url;
         option.textContent = name;
         embedSelect.appendChild(option);
-        if (index === 0) iframe.src = url;
       });
+
+      // Default select first server
+      if (servers.length > 0) {
+        iframe.src = servers[0][1];
+        embedLink.href = servers[0][1];
+        embedSelect.selectedIndex = 0;
+      }
 
       embedSelect.addEventListener('change', function () {
         iframe.src = this.value;
+        embedLink.href = this.value;
       });
     }
 
