@@ -190,7 +190,7 @@
                             <div class="movie-item">
                                 <img src="${poster}" class="movie-poster">
                                 <div class="movie-title">${title} (${year})</div>
-                                <button class="play-button" onclick="viewAnimeSeasons(${anime.id})">View Seasons</button>
+                                <button class="play-button" onclick="viewAnimeEpisodes(${anime.id})">View Episodes</button>
                             </div>
                         `);
                     });
@@ -284,9 +284,10 @@
             console.log('Play anime movie:', id);
         }
 
-        function viewAnimeSeasons(id) {
-            console.log('View anime series:', id);
-        }
+		function viewAnimeEpisodes(id) {
+			window.location.href = `animeepisodes.html?id=${id}`;
+		}
+
 
         $('#search-button').on('click', function () {
             const query = $('#search-input').val();
