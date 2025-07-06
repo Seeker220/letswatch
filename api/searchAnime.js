@@ -1,11 +1,11 @@
-// searchanime.js (Updated for MAL ID and 20 items per page)
+// searchanime.js (Updated: 20 items per page)
 const axios = require('axios');
 
 module.exports = async (req, res) => {
   const query = req.query.q;
   const moviesPage = parseInt(req.query.moviesPage || 1);
   const seriesPage = parseInt(req.query.seriesPage || 1);
-  const perPage = 20; // 20 items per page for frontend
+  const perPage = 20; // updated to 20 items per page for frontend
 
   let allAnime = [];
   let current = 1;
@@ -23,7 +23,6 @@ module.exports = async (req, res) => {
               }
               media(search: $search, type: ANIME) {
                 id
-                idMal
                 title {
                   romaji
                   english

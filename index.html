@@ -156,59 +156,49 @@
             searchAnime(query);
         }
 
-		function searchAnime(query) {
-			$.get(`/api/searchAnime?q=${encodeURIComponent(query)}&moviesPage=${animeMoviesPage}&seriesPage=${animeSeriesPage}`, function(res) {
-				$('#anime-movies-results').html('');
-				$('#anime-series-results').html('');
+        function searchAnime(query) {
+            $.get(`/api/searchAnime?q=${encodeURIComponent(query)}&moviesPage=${animeMoviesPage}&seriesPage=${animeSeriesPage}`, function(res) {
+                $('#anime-movies-results').html('');
+                $('#anime-series-results').html('');
 
-				totalPagesAnimeMovies = res.totalPages.movies;
-				totalPagesAnimeSeries = res.totalPages.series;
+                totalPagesAnimeMovies = res.totalPages.movies;
+                totalPagesAnimeSeries = res.totalPages.series;
 
-				if (res.animeMovies.length) {
-					res.animeMovies.forEach(anime => {
-						const title = anime.title.english || anime.title.romaji;
-						const year = anime.seasonYear || 'N/A';
-						const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
-						$('#anime-movies-results').append(`
-							<div class="movie-item">
-								<img src="${poster}" class="movie-poster">
-								<div class="movie-title">${title} (${year})</div>
-								<button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>
-							</div>
-						`);
-					});
-					$('#anime-movies-title').show();
-					updatePagination('anime-movies');
-				}
+                if (res.animeMovies.length) {
+                    res.animeMovies.forEach(anime => {
+                        const title = anime.title.english || anime.title.romaji;
+                        const year = anime.seasonYear || 'N/A';
+                        const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                        $('#anime-movies-results').append(`
+                            <div class="movie-item">
+                                <img src="${poster}" class="movie-poster">
+                                <div class="movie-title">${title} (${year})</div>
+                                <button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>
+                            </div>
+                        `);
+                    });
+                    $('#anime-movies-title').show();
+                    updatePagination('anime-movies');
+                }
 
-				if (res.animeSeries.length) {
-					res.animeSeries.forEach(anime => {
-						const title = anime.title.english || anime.title.romaji;
-						const year = anime.seasonYear || 'N/A';
-						const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
-						const malId = anime.idMal;
-						$('#anime-series-results').append(`
-							<div class="movie-item">
-								<img src="${poster}" class="movie-poster">
-								<div class="movie-title">${title} (${year})</div>
-								<button class="play-button" onclick="viewAnimeEpisodes(${malId})">View Episodes</button>
-							</div>
-						`);
-					});
-					$('#anime-series-title').show();
-					updatePagination('anime-series');
-				}
-			});
-		}
-
-		function viewAnimeEpisodes(malId) {
-			if (!malId) {
-				alert('MAL ID not available for this anime.');
-				return;
-			}
-			window.location.href = `animeepisodes.html?id=${malId}`;
-		}
-
+                if (res.animeSeries.length) {
+                    res.animeSeries.forEach(anime => {
+                        const title = anime.title.english || anime.title.romaji;
+                        const year = anime.seasonYear || 'N/A';
+                        const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                        $('#anime-series-results').append(`
+                            <div class="movie-item">
+                                <img src="${poster}" class="movie-poster">
+                                <div class="movie-title">${title} (${year})</div>
+                                <button class="play-button" onclick="viewAnimeSeasons(${anime.id})">View Seasons</button>
+                            </div>
+                        `);
+                    });
+                    $('#anime-series-title').show();
+                    updatePagination('anime-series');
+                }
+            });
+        }
 
         function displayResults(results, category) {
             const container = category === 'movies' ? '#movies-results' : '#series-results';
@@ -294,7 +284,9 @@
             console.log('Play anime movie:', id);
         }
 
-
+        function viewAnimeSeasons(id) {
+            console.log('View anime series:', id);
+        }
 
         $('#search-button').on('click', function () {
             const query = $('#search-input').val();
