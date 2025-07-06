@@ -167,17 +167,19 @@
 	async function loadEpisodes() {
 	  try {
 		const jikanRes = await fetchFromJikan(currentPage);
-		if (jikanRes && jikanRes.data && jikanRes.pagination) {
-		  const episodes = jikanRes.data;
+		const episodes = jikanRes.data;
+		const hasEpisodes = Array.isArray(episodes) && episodes.length > 0;
+
+		if (hasEpisodes && jikanRes.pagination) {
 		  totalPages = jikanRes.pagination.last_visible_page || 1;
 		  displayEpisodesJikan(episodes);
 		  updatePagination();
-		  return; // ✅ Stop here if Jikan worked
+		  return; // ✅ Stop here if Jikan worked and has data
 		} else {
-		  throw new Error("Incomplete Jikan response");
+		  throw new Error("Jikan responded with empty or invalid data");
 		}
 	  } catch (err) {
-		console.warn("Jikan failed or invalid response, falling back to AniList...", err);
+		console.warn("Jikan failed or returned empty, falling back to AniList...", err);
 		fetchFromAnilist(anilistId)
 		  .then(res => {
 			const total = res?.data?.Media?.episodes || 0;
@@ -193,6 +195,7 @@
 		  });
 	  }
 	}
+
 
 
     // On page load
