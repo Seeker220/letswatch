@@ -68,140 +68,160 @@
 </head>
 <body>
 
-  <h1>Anime Episodes</h1>
-  <ul id="episodes-results"></ul>
-  <div class="pagination" id="pagination"></div>
+<h1>Anime Episodes</h1>
+<ul id="episodes-results"></ul>
+<div class="pagination" id="pagination"></div>
 
-  <script>
-    const urlParams = new URLSearchParams(window.location.search);
-    const anilistId = urlParams.get('id');
-    const malId = urlParams.get('mal');
-    let currentPage = 1;
-    let totalPages = 1;
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const anilistId = urlParams.get('id');
+  const malId = urlParams.get('mal');
+  let currentPage = 1;
+  let totalPages = 1;
 
-    function fetchFromJikan(page) {
-      const url = `https://api.jikan.moe/v4/anime/${malId}/episodes?page=${page}`;
-      return $.get(url);
-    }
+  function fetchFromJikan(page) {
+    const url = `https://api.jikan.moe/v4/anime/${malId}/episodes?page=${page}`;
+    return $.get(url);
+  }
 
-    function fetchFromAnilist(anilistId) {
-      const query = `
-        query ($id: Int) {
-          Media(id: $id, type: ANIME) {
-            episodes
-            title {
-              romaji
-              english
-            }
+  function fetchFromAnilist(anilistId) {
+    const query = `
+      query ($id: Int) {
+        Media(id: $id, type: ANIME) {
+          episodes
+          streamingEpisodes {
+            title
+            thumbnail
+          }
+          title {
+            romaji
+            english
           }
         }
-      `;
-      return $.ajax({
-        url: 'https://graphql.anilist.co',
-        method: 'POST',
-        contentType: 'application/json',
-        data: JSON.stringify({
-          query: query,
-          variables: { id: parseInt(anilistId) }
-        })
-      });
-    }
-
-    function displayEpisodesJikan(episodes) {
-      $('#episodes-results').html('');
-      episodes.forEach(ep => {
-        const img = ep.images?.jpg?.image_url || 'https://via.placeholder.com/200x130?text=No+Image';
-        const title = ep.title || `Episode ${ep.mal_id}`;
-        const number = ep.mal_id;
-
-        $('#episodes-results').append(`
-          <li class="episode-item">
-            <img src="${img}" class="episode-poster">
-            <div class="episode-number">Ep ${number}</div>
-            <div class="episode-title">${title}</div>
-          </li>
-        `);
-      });
-    }
-
-    function displayEpisodesAnilist(total) {
-      $('#episodes-results').html('');
-      for (let i = 1; i <= total; i++) {
-        $('#episodes-results').append(`
-          <li class="episode-item">
-            <img src="https://via.placeholder.com/200x130?text=Ep+${i}" class="episode-poster">
-            <div class="episode-number">Ep ${i}</div>
-            <div class="episode-title">Episode ${i}</div>
-          </li>
-        `);
       }
+    `;
+    return $.ajax({
+      url: 'https://graphql.anilist.co',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({
+        query: query,
+        variables: { id: parseInt(anilistId) }
+      })
+    });
+  }
+
+  function displayStreamingEpisodes(episodes) {
+    $('#episodes-results').html('');
+    episodes.forEach((ep, idx) => {
+      const img = ep.thumbnail || 'https://via.placeholder.com/200x130?text=No+Image';
+      const title = ep.title || `Episode ${idx + 1}`;
+      $('#episodes-results').append(`
+        <li class="episode-item">
+          <img src="${img}" class="episode-poster">
+          <div class="episode-number">Ep ${idx + 1}</div>
+          <div class="episode-title">${title}</div>
+        </li>
+      `);
+    });
+    $('#pagination').html('');
+  }
+
+  function displayEpisodesJikan(episodes) {
+    $('#episodes-results').html('');
+    episodes.forEach(ep => {
+      const img = ep.images?.jpg?.image_url || 'https://via.placeholder.com/200x130?text=No+Image';
+      const title = ep.title || `Episode ${ep.mal_id}`;
+      const number = ep.mal_id;
+      $('#episodes-results').append(`
+        <li class="episode-item">
+          <img src="${img}" class="episode-poster">
+          <div class="episode-number">Ep ${number}</div>
+          <div class="episode-title">${title}</div>
+        </li>
+      `);
+    });
+  }
+
+  function displayEpisodesAnilist(total) {
+    $('#episodes-results').html('');
+    for (let i = 1; i <= total; i++) {
+      $('#episodes-results').append(`
+        <li class="episode-item">
+          <img src="https://via.placeholder.com/200x130?text=Ep+${i}" class="episode-poster">
+          <div class="episode-number">Ep ${i}</div>
+          <div class="episode-title">Episode ${i}</div>
+        </li>
+      `);
     }
+    $('#pagination').html('');
+  }
 
-    function updatePagination() {
-      const container = $('#pagination');
-      container.html('');
+  function updatePagination() {
+    const container = $('#pagination');
+    container.html('');
+    const range = 5;
+    const start = Math.max(1, currentPage - range);
+    const end = Math.min(totalPages, currentPage + range);
 
-      const range = 5;
-      const start = Math.max(1, currentPage - range);
-      const end = Math.min(totalPages, currentPage + range);
-
-      if (currentPage > 1) {
-        container.append(`<button onclick="goToPage(${currentPage - 1})">&lt;</button>`);
-      }
-
-      for (let i = start; i <= end; i++) {
-        const activeClass = (i === currentPage) ? 'active' : '';
-        container.append(`<button class="${activeClass}" onclick="goToPage(${i})">${i}</button>`);
-      }
-
-      if (currentPage < totalPages) {
-        container.append(`<button onclick="goToPage(${currentPage + 1})">&gt;</button>`);
-      }
+    if (currentPage > 1) {
+      container.append(`<button onclick="goToPage(${currentPage - 1})">&lt;</button>`);
     }
-
-    function goToPage(page) {
-      currentPage = page;
-      loadEpisodes();
+    for (let i = start; i <= end; i++) {
+      const activeClass = (i === currentPage) ? 'active' : '';
+      container.append(`<button class="${activeClass}" onclick="goToPage(${i})">${i}</button>`);
     }
+    if (currentPage < totalPages) {
+      container.append(`<button onclick="goToPage(${currentPage + 1})">&gt;</button>`);
+    }
+  }
 
-	async function loadEpisodes() {
-	  try {
-		const jikanRes = await fetchFromJikan(currentPage);
-		const episodes = jikanRes.data;
-		const hasEpisodes = Array.isArray(episodes) && episodes.length > 0;
-
-		if (hasEpisodes && jikanRes.pagination) {
-		  totalPages = jikanRes.pagination.last_visible_page || 1;
-		  displayEpisodesJikan(episodes);
-		  updatePagination();
-		  return; // ✅ Stop here if Jikan worked and has data
-		} else {
-		  throw new Error("Jikan responded with empty or invalid data");
-		}
-	  } catch (err) {
-		console.warn("Jikan failed or returned empty, falling back to AniList...", err);
-		fetchFromAnilist(anilistId)
-		  .then(res => {
-			const total = res?.data?.Media?.episodes || 0;
-			if (total > 0) {
-			  displayEpisodesAnilist(total);
-			} else {
-			  $('#episodes-results').html('<p>No episodes available.</p>');
-			}
-			$('#pagination').html('');
-		  })
-		  .catch(() => {
-			$('#episodes-results').html('<p>Could not load episodes from either source.</p>');
-		  });
-	  }
-	}
-
-
-
-    // On page load
+  function goToPage(page) {
+    currentPage = page;
     loadEpisodes();
-  </script>
+  }
 
-  <script src="/main.js"></script>
+  async function loadEpisodes() {
+    try {
+      // Try AniList streaming episodes first
+      const aniRes = await fetchFromAnilist(anilistId);
+      const media = aniRes?.data?.Media;
+      const streamingEpisodes = media?.streamingEpisodes;
+
+      if (Array.isArray(streamingEpisodes) && streamingEpisodes.length > 0) {
+        displayStreamingEpisodes(streamingEpisodes);
+        return;
+      }
+
+      // Fallback to Jikan
+      const jikanRes = await fetchFromJikan(currentPage);
+      const episodes = jikanRes?.data;
+      const hasEpisodes = Array.isArray(episodes) && episodes.length > 0;
+
+      if (hasEpisodes && jikanRes.pagination) {
+        totalPages = jikanRes.pagination.last_visible_page || 1;
+        displayEpisodesJikan(episodes);
+        updatePagination();
+        return;
+      }
+
+      // Fallback to AniList episode count
+      const total = media?.episodes || 0;
+      if (total > 0) {
+        displayEpisodesAnilist(total);
+      } else {
+        $('#episodes-results').html('<p>No episodes found.</p>');
+      }
+    } catch (err) {
+      console.error("Failed to load from all sources", err);
+      $('#episodes-results').html('<p>Could not load episodes from any source.</p>');
+    }
+  }
+
+  // On page load
+  loadEpisodes();
+</script>
+
+<script src="/main.js"></script>
 </body>
 </html>
