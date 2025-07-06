@@ -1,10 +1,11 @@
+// searchanime.js (Updated: 20 items per page)
 const axios = require('axios');
 
 module.exports = async (req, res) => {
   const query = req.query.q;
-  const pageMovies = parseInt(req.query.moviesPage || 1);
-  const pageSeries = parseInt(req.query.seriesPage || 1);
-  const perPage = 12;
+  const moviesPage = parseInt(req.query.moviesPage || 1);
+  const seriesPage = parseInt(req.query.seriesPage || 1);
+  const perPage = 20; // updated to 20 items per page for frontend
 
   let allAnime = [];
   let current = 1;
@@ -57,30 +58,32 @@ module.exports = async (req, res) => {
       current++;
     }
 
+    // Categorize
     const animeMovies = [];
     const animeSeries = [];
 
     for (const anime of allAnime) {
       const episodes = anime.episodes;
       const format = anime.format;
-      const isMovie = (episodes === 1) || (episodes == null && !['TV', 'TV_SHORT'].includes(format));
 
+      const isMovie = (episodes === 1) || (episodes == null && !['TV', 'TV_SHORT'].includes(format));
       if (isMovie) animeMovies.push(anime);
       else animeSeries.push(anime);
     }
 
-    const paginate = (list, page) => list.slice((page - 1) * perPage, page * perPage);
+    const totalPages = (list) => Math.ceil(list.length / perPage);
+    const getPaginated = (list, page) => list.slice((page - 1) * perPage, page * perPage);
 
     res.status(200).json({
-      animeMovies: paginate(animeMovies, pageMovies),
-      animeSeries: paginate(animeSeries, pageSeries),
+      animeMovies: getPaginated(animeMovies, moviesPage),
+      animeSeries: getPaginated(animeSeries, seriesPage),
       totalPages: {
-        movies: Math.ceil(animeMovies.length / perPage),
-        series: Math.ceil(animeSeries.length / perPage)
+        movies: totalPages(animeMovies),
+        series: totalPages(animeSeries)
       },
-      currentPage: {
-        movies: pageMovies,
-        series: pageSeries
+      page: {
+        movies: moviesPage,
+        series: seriesPage
       }
     });
   } catch (error) {
