@@ -265,7 +265,6 @@
                 // Data is expected in the structure:
                 // { movies: [], series: [], animeMovies: [], animeSeries: [] }
                 // Each array: { item_id, item_type, state, updated_at, ... }
-                // If backend doesn't support this, fallback to manual grouping from all "watching" rows
                 if (!data.ok) return;
                 const { movies, series, animeMovies, animeSeries } = data;
 
@@ -298,7 +297,7 @@
         } else if (type === 'anime-movies') {
             rowId = '#continue-anime-movies-row';
             buttonLabel = 'Play';
-            buttonAction = (id) => `play.html?type=anime&id=${id}&ep=1`;
+            buttonAction = (id) => `play.html?type=anime-movie&id=${id}&ep=1`;
         } else if (type === 'anime-series') {
             rowId = '#continue-anime-series-row';
             buttonLabel = 'View Episodes';
@@ -307,12 +306,11 @@
 
         $(rowId).empty();
         items.slice(0, 5).forEach(item => {
-            // Try to get poster/title from localStorage cache if available, else generic
             let poster = 'https://via.placeholder.com/140x120?text=No+Image', title = '', year = '';
             if (item.poster_path) {
                 poster = imageUrl + item.poster_path;
-            } else if (item.coverImage) {
-                poster = item.coverImage.large || poster;
+            } else if (item.coverImage && item.coverImage.large) {
+                poster = item.coverImage.large;
             }
             title = item.title || item.name || item.title_english || item.title_romaji || '';
             if (item.year) year = ` (${item.year})`;
@@ -375,10 +373,10 @@
                     const year = anime.seasonYear || 'N/A';
                     const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
                     $('#anime-movies-results').append(`
-                            <div class="movie-item" data-type="anime" data-id="${anime.id}">
+                            <div class="movie-item" data-type="anime-movie" data-id="${anime.id}">
                                 <img src="${poster}" class="movie-poster">
                                 <div class="movie-title">${title} (${year})</div>
-                                <span class="watched-state watched-not" data-type="anime" data-id="${anime.id}">Not Watched</span>
+                                <span class="watched-state watched-not" data-type="anime-movie" data-id="${anime.id}">Not Watched</span>
                                 <button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>
                             </div>
                         `);
@@ -396,10 +394,10 @@
                     const year = anime.seasonYear || 'N/A';
                     const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
                     $('#anime-series-results').append(`
-                            <div class="movie-item" data-type="anime" data-id="${anime.id}">
+                            <div class="movie-item" data-type="anime-series" data-id="${anime.id}">
                                 <img src="${poster}" class="movie-poster">
                                 <div class="movie-title">${title} (${year})</div>
-                                <span class="watched-state watched-not" data-type="anime" data-id="${anime.id}">Not Watched</span>
+                                <span class="watched-state watched-not" data-type="anime-series" data-id="${anime.id}">Not Watched</span>
                                 <button class="play-button" onclick="window.location.href='animeepisodes.html?id=${anime.id}&mal=${anime.idMal}'">View Episodes</button>
                             </div>
                         `);
@@ -497,7 +495,7 @@
     }
 
     function playAnimeMovie(id) {
-        window.location.href = `play.html?type=anime&id=${id}&ep=1`;
+        window.location.href = `play.html?type=anime-movie&id=${id}&ep=1`;
     }
 
     function viewSeasons(id) {
@@ -521,8 +519,8 @@
         } else if (category === "anime") {
             // Both anime movies and anime series
             items = [
-                ...(lastAnimeMovies || []).map(a => ({ item_type: "anime", item_id: a.id })),
-                ...(lastAnimeSeries || []).map(a => ({ item_type: "anime", item_id: a.id }))
+                ...(lastAnimeMovies || []).map(a => ({ item_type: "anime-movie", item_id: a.id })),
+                ...(lastAnimeSeries || []).map(a => ({ item_type: "anime-series", item_id: a.id }))
             ];
         }
         if (!items.length) return;
