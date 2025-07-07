@@ -268,22 +268,22 @@
             .then(res => res.json())
             .then(data => {
                 if (!data.ok) return;
-                const { movies, series, animeMovies, animeSeries } = data;
-                renderContinueSection('movies', movies || []);
-                renderContinueSection('series', series || []);
-                renderContinueSection('anime-movies', animeMovies || []);
-                renderContinueSection('anime-series', animeSeries || []);
 
-                $('#continue-movies-section').toggle((movies || []).length > 0);
-                $('#continue-series-section').toggle((series || []).length > 0);
-                $('#continue-anime-movies-section').toggle((animeMovies || []).length > 0);
-                $('#continue-anime-series-section').toggle((animeSeries || []).length > 0);
+                renderContinueSection('movies', data.movies || []);
+                renderContinueSection('series', data.series || []);
+                renderContinueSection('anime-movies', data.animeMovies || []);
+                renderContinueSection('anime-series', data.animeSeries || []);
+
+                $('#continue-movies-section').toggle((data.movies || []).length > 0);
+                $('#continue-series-section').toggle((data.series || []).length > 0);
+                $('#continue-anime-movies-section').toggle((data.animeMovies || []).length > 0);
+                $('#continue-anime-series-section').toggle((data.animeSeries || []).length > 0);
                 $('#continue-watching-wrapper').show();
-            })
-            .catch(() => {
-                $('#continue-watching-wrapper').hide();
-            });
+            }).catch(() => {
+            $('#continue-watching-wrapper').hide();
+        });
     }
+
 
     function renderContinueSection(type, items) {
         let rowId, buttonLabel, buttonAction;
@@ -293,7 +293,7 @@
             buttonAction = (id) => `play.html?type=tmdb-movie&id=${id}`;
         } else if (type === 'series') {
             rowId = '#continue-series-row';
-            buttonLabel = 'View';
+            buttonLabel = 'View Seasons';
             buttonAction = (id) => `seasons.html?id=${id}`;
         } else if (type === 'anime-movies') {
             rowId = '#continue-anime-movies-row';
@@ -301,40 +301,33 @@
             buttonAction = (id) => `play.html?type=anime-movie&id=${id}&ep=1`;
         } else if (type === 'anime-series') {
             rowId = '#continue-anime-series-row';
-            buttonLabel = 'View';
+            buttonLabel = 'View Episodes';
             buttonAction = (id) => `animeepisodes.html?id=${id}`;
         }
 
         $(rowId).empty();
         items.slice(0, 5).forEach(item => {
+            // Use metadata from backend
             let poster = 'https://via.placeholder.com/140x120?text=No+Image';
-            let title = '';
-            let year = '';
-
-            // Try all possible metadata fields supplied by backend
             if (item.poster_path) {
-                poster = imageUrl + item.poster_path;
-            } else if (item.coverImage && item.coverImage.large) {
+                poster = 'https://image.tmdb.org/t/p/w500' + item.poster_path;
+            } else if (item.coverImage?.large) {
                 poster = item.coverImage.large;
             }
-            title = item.title || item.name || item.title_english || item.title_romaji || '';
-            if (item.year) year = ` (${item.year})`;
-            // For episodes/seasons, append episode/season num if available
-            if (item.item_type && item.item_type.indexOf('episode') !== -1 && item.episode_number) {
-                title += ` Ep ${item.episode_number}`;
-            }
-            if (item.item_type && item.item_type.indexOf('season') !== -1 && item.season_number) {
-                title += ` S${item.season_number}`;
-            }
+
+            const title = item.title || '';
+            const year = item.year ? ` (${item.year})` : '';
+
             $(rowId).append(`
-                <div class="continue-item">
-                    <img class="continue-poster" src="${poster}">
-                    <div class="continue-title-short">${title}${year}</div>
-                    <button class="continue-btn" onclick="window.location.href='${buttonAction(item.item_id)}'">${buttonLabel}</button>
-                </div>
-            `);
+            <div class="continue-item">
+                <img class="continue-poster" src="${poster}">
+                <div class="continue-title-short">${title}${year}</div>
+                <button class="continue-btn" onclick="window.location.href='${buttonAction(item.item_id)}'">${buttonLabel}</button>
+            </div>
+        `);
         });
     }
+
 
     function searchMovies(query) {
         $('#continue-watching-wrapper').hide();
