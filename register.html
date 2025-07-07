@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Register - LetsWatch</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .register-container {
+      background-color: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 30px 24px 24px 24px;
+      box-shadow: 0 4px 16px #0004;
+    }
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 10px;
+      margin-bottom: 18px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      background: #222;
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #ff9900;
+    }
+    .btn {
+      width: 100%;
+      background-color: #ff9900;
+      color: #fff;
+      border: none;
+      padding: 12px 0;
+      border-radius: 5px;
+      font-size: 17px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .btn:active {
+      background-color: #cc7a00;
+    }
+    .message {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 15px;
+    }
+    .link {
+      color: #ff9900;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Register</h1>
+  <div class="register-container">
+    <form id="register-form" autocomplete="off">
+      <label class="form-label" for="username">Username</label>
+      <input class="form-input" name="username" id="username" required autocomplete="username" />
+
+      <label class="form-label" for="email">Email</label>
+      <input class="form-input" name="email" id="email" type="email" required autocomplete="email" />
+
+      <label class="form-label" for="password">Password</label>
+      <input class="form-input" name="password" id="password" type="password" required autocomplete="new-password" />
+
+      <button type="submit" class="btn">Register</button>
+    </form>
+    <div id="status" class="message"></div>
+    <div class="message" style="margin-top:10px;">
+      Already have an account?
+      <a href="login.html" class="link">Login</a>
+    </div>
+  </div>
+  <script>
+    document.getElementById('register-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          username: form.username.value,
+          email: form.email.value,
+          password: form.password.value
+        })
+      });
+      const data = await res.json();
+      document.getElementById('status').textContent = data.ok ? "Registered! Please login." : data.error;
+      document.getElementById('status').style.color = data.ok ? "#3be98f" : "#ff5555";
+      if(data.ok) setTimeout(()=>window.location.href='login.html', 2000);
+    }
+  </script>
+</body>
+</html>

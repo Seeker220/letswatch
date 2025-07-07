@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login - LetsWatch</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .login-container {
+      background-color: #1e1e1e;
+      border: 1px solid #333;
+      border-radius: 8px;
+      max-width: 400px;
+      margin: 40px auto;
+      padding: 30px 24px 24px 24px;
+      box-shadow: 0 4px 16px #0004;
+    }
+    .form-label {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 10px;
+      margin-bottom: 18px;
+      border-radius: 5px;
+      border: 1px solid #333;
+      background: #222;
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #ff9900;
+    }
+    .btn {
+      width: 100%;
+      background-color: #ff9900;
+      color: #fff;
+      border: none;
+      padding: 12px 0;
+      border-radius: 5px;
+      font-size: 17px;
+      cursor: pointer;
+      margin-top: 5px;
+    }
+    .btn:active {
+      background-color: #cc7a00;
+    }
+    .message {
+      margin-top: 16px;
+      text-align: center;
+      font-size: 15px;
+    }
+    .link {
+      color: #ff9900;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .link:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <h1>Login</h1>
+  <div class="login-container">
+    <form id="login-form" autocomplete="off">
+      <label class="form-label" for="username">Username</label>
+      <input class="form-input" name="username" id="username" required autocomplete="username" />
+
+      <label class="form-label" for="password">Password</label>
+      <input class="form-input" name="password" id="password" type="password" required autocomplete="current-password" />
+
+      <button type="submit" class="btn">Login</button>
+    </form>
+    <div id="welcome" class="message"></div>
+    <div class="message" style="margin-top:10px;">
+      Don't have an account?
+      <a href="register.html" class="link">Register</a>
+    </div>
+  </div>
+  <script>
+    document.getElementById('login-form').onsubmit = async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          username: form.username.value,
+          password: form.password.value
+        })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        document.getElementById('welcome').textContent = `Welcome ${data.username}! Redirecting...`;
+        document.getElementById('welcome').style.color = "#3be98f";
+        setTimeout(() => window.location.href = 'index.html', 10000);
+      } else {
+        document.getElementById('welcome').textContent = data.error;
+        document.getElementById('welcome').style.color = "#ff5555";
+      }
+    }
+  </script>
+</body>
+</html>
