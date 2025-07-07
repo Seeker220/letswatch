@@ -1,10 +1,7 @@
 import { getDbPool } from '../lib/db';
 import jwt from 'jsonwebtoken';
-import fetch from 'node-fetch';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
-const TMDB_API_KEY = process.env.TMDB_API_KEY || '';
-const ANILIST_API = 'https://graphql.anilist.co';
 
 // Helper to get user from JWT
 function getUserIdFromReq(req) {
@@ -18,97 +15,51 @@ function getUserIdFromReq(req) {
   }
 }
 
-// Fetch TMDB details by type/id
-async function fetchTMDBDetails(item_type, item_id) {
-  if (!TMDB_API_KEY) return {};
-  try {
-    let url = "";
-    if (item_type === "tmdb-movie") {
-      url = `https://api.themoviedb.org/3/movie/${item_id}?api_key=${TMDB_API_KEY}&language=en-US`;
-    } else if (item_type === "tmdb-tv") {
-      url = `https://api.themoviedb.org/3/tv/${item_id}?api_key=${TMDB_API_KEY}&language=en-US`;
-    }
-    if (!url) return {};
-    const resp = await fetch(url);
-    if (!resp.ok) return {};
-    const data = await resp.json();
-    return {
-      title: data.title || data.name || "",
-      year: (data.release_date || data.first_air_date || "").split("-")[0],
-      poster_path: data.poster_path,
-      tmdb_id: data.id
-    };
-  } catch (e) { return {}; }
-}
-
-// Fetch AniList details by id/type
-async function fetchAniListDetails(item_type, item_id) {
-  try {
-    const query = `
-      query ($id: Int) {
-        Media(id: $id, type: ANIME) {
-          id
-          title { english romaji }
-          coverImage { large }
-          seasonYear
-        }
-      }
-    `;
-    const resp = await fetch(ANILIST_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ query, variables: { id: parseInt(item_id) } })
-    });
-    if (!resp.ok) return {};
-    const data = await resp.json();
-    const media = data.data?.Media;
-    if (!media) return {};
-    return {
-      title: media.title.english || media.title.romaji || "",
-      year: media.seasonYear,
-      coverImage: media.coverImage,
-      anilist_id: media.id
-    };
-  } catch (e) { return {}; }
-}
-
 export default async function handler(req, res) {
   const userId = getUserIdFromReq(req);
   if (!userId) return res.status(401).json({ error: 'Not authenticated' });
 
   const pool = getDbPool();
 
-  // CONTINUE WATCHING with live details
+  // CONTINUE WATCHING: Return lists for dashboard if ?continue=1
   if (req.method === 'GET' && req.query.continue === '1') {
     try {
-      // Get top 5 of each type in watching state
-      const types = ['tmdb-movie', 'tmdb-tv', 'anime-movie', 'anime-series'];
-      const result = {};
-      for (const t of types) {
-        const { rows } = await pool.query(
-            `SELECT * FROM watched WHERE user_id=$1 AND item_type=$2 AND state='watching' ORDER BY updated_at DESC LIMIT 5`,
-            [userId, t]
-        );
-        // Enrich with external data
-        const enriched = [];
-        for (const row of rows) {
-          let detail = {};
-          if (t === "tmdb-movie" || t === "tmdb-tv") {
-            detail = await fetchTMDBDetails(t, row.item_id);
-          } else if (t === "anime-movie" || t === "anime-series") {
-            detail = await fetchAniListDetails(t, row.item_id);
-          }
-          enriched.push({
-            ...row,
-            ...detail
-          });
-        }
-        if (t === "tmdb-movie") result.movies = enriched;
-        else if (t === "tmdb-tv") result.series = enriched;
-        else if (t === "anime-movie") result.animeMovies = enriched;
-        else if (t === "anime-series") result.animeSeries = enriched;
-      }
-      res.json({ ok: true, ...result });
+      // Movies (most recent 5 watching)
+      const moviesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='tmdb-movie' AND state='watching'
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      // Series (most recent 5 watching)
+      const seriesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='tmdb-tv' AND state='watching'
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      // Anime Movies (most recent 5 watching, item_type='anime' and season_number=0)
+      const animeMoviesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number=0
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      // Anime Series (most recent 5 watching, item_type='anime' and season_number!=0)
+      // Optionally, you can use a different marker to distinguish anime series if you use one.
+      const animeSeriesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number!=0
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      res.json({
+        ok: true,
+        movies: moviesRows,
+        series: seriesRows,
+        animeMovies: animeMoviesRows,
+        animeSeries: animeSeriesRows
+      });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'Failed to fetch continue watching.' });
     }
@@ -152,7 +103,7 @@ export default async function handler(req, res) {
 
   // POST: Set watched state for an item
   else if (req.method === 'POST') {
-    let { item_type, item_id, season_number, episode_number, state } = req.body || {};
+    const { item_type, item_id, season_number, episode_number, state } = req.body || {};
     if (!item_type || !item_id || state === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
@@ -162,12 +113,14 @@ export default async function handler(req, res) {
     const episode = episode_number !== undefined && episode_number !== null ? episode_number : 0;
 
     if (state === 'not_watched') {
+      // Remove entry if exists
       await pool.query(
           `DELETE FROM watched WHERE user_id=$1 AND item_type=$2 AND item_id=$3 AND season_number=$4 AND episode_number=$5`,
           [userId, item_type, String(item_id), season, episode]
       );
       return res.json({ ok: true, deleted: true });
     } else {
+      // Upsert watched state
       const { rows } = await pool.query(
           `INSERT INTO watched (user_id, item_type, item_id, season_number, episode_number, state, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW())
