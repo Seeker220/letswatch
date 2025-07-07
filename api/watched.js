@@ -23,8 +23,6 @@ export default async function handler(req, res) {
 
   // Batch GET watched states
   if (req.method === 'GET') {
-    // Accepts ?items=[{item_type,item_id,season_number,episode_number},...]
-    // Send as JSON string: items=[{...}]
     let items = [];
     try {
       items = JSON.parse(req.query.items || '[]');
@@ -33,15 +31,6 @@ export default async function handler(req, res) {
     }
     if (!Array.isArray(items) || items.length === 0) return res.json({ states: {} });
 
-    // Build a composite key for results
-    const keys = items.map(
-      x =>
-        `${x.item_type}:${x.item_id}` +
-        (x.season_number !== undefined ? `:s${x.season_number}` : '') +
-        (x.episode_number !== undefined ? `:e${x.episode_number}` : '')
-    );
-
-    // Build WHERE clause
     const wheres = [];
     const params = [userId];
     items.forEach((x, i) => {
@@ -61,7 +50,6 @@ export default async function handler(req, res) {
     const sql = `SELECT * FROM watched WHERE user_id=$1 AND (${wheres.join(' OR ')})`;
     const { rows } = await pool.query(sql, params);
 
-    // Map to result
     const stateMap = {};
     rows.forEach(row => {
       let k = `${row.item_type}:${row.item_id}`;
@@ -76,26 +64,44 @@ export default async function handler(req, res) {
   // POST: Set watched state for an item
   else if (req.method === 'POST') {
     const { item_type, item_id, season_number, episode_number, state } = req.body || {};
-    if (!item_type || !item_id || !state) {
+    if (!item_type || !item_id || state === undefined) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    // Upsert watched state
-    const { rows } = await pool.query(
-      `INSERT INTO watched (user_id, item_type, item_id, season_number, episode_number, state, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
-      ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
-      DO UPDATE SET state=$6, updated_at=NOW()
-      RETURNING *`,
-      [
-        userId,
-        item_type,
-        String(item_id),
-        season_number !== undefined ? season_number : null,
-        episode_number !== undefined ? episode_number : null,
-        state,
-      ]
-    );
-    res.json({ ok: true, row: rows[0] });
+
+    if (state === 'not_watched') {
+      // Remove entry if exists
+      await pool.query(
+          `DELETE FROM watched WHERE user_id=$1 AND item_type=$2 AND item_id=$3
+        AND ${season_number !== undefined ? 'season_number=$4' : 'season_number IS NULL'}
+        AND ${episode_number !== undefined ? `episode_number=$${season_number !== undefined ? 5 : 4}` : `episode_number IS NULL`}`,
+          [
+            userId,
+            item_type,
+            String(item_id),
+            ...(season_number !== undefined ? [season_number] : []),
+            ...(episode_number !== undefined ? [episode_number] : []),
+          ]
+      );
+      return res.json({ ok: true, deleted: true });
+    } else {
+      // Upsert watched state
+      const { rows } = await pool.query(
+          `INSERT INTO watched (user_id, item_type, item_id, season_number, episode_number, state, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, NOW())
+        ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
+        DO UPDATE SET state=$6, updated_at=NOW()
+        RETURNING *`,
+          [
+            userId,
+            item_type,
+            String(item_id),
+            season_number !== undefined ? season_number : null,
+            episode_number !== undefined ? episode_number : null,
+            state,
+          ]
+      );
+      res.json({ ok: true, row: rows[0] });
+    }
   } else {
     res.status(405).json({ error: 'Method not allowed' });
   }
