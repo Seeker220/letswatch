@@ -6,4 +6,16 @@
 # Datasource local storage ignored files
 /dataSources/
 /dataSources.local.xml
-/node_modules/
+# Node.js
+node_modules/
+package-lock.json
+
+# WebStorm / JetBrains
+.idea/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Vercel build cache (optional)
+.vercel/output/
