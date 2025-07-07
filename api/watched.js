@@ -34,17 +34,11 @@ export default async function handler(req, res) {
     const wheres = [];
     const params = [userId];
     items.forEach((x, i) => {
-      let clause = `(item_type=$${params.length + 1} AND item_id=$${params.length + 2}`;
-      params.push(x.item_type, String(x.item_id));
-      if (x.season_number !== undefined)
-        clause += ` AND season_number=$${params.length + 1}`, params.push(x.season_number);
-      else
-        clause += ` AND season_number IS NULL`;
-      if (x.episode_number !== undefined)
-        clause += ` AND episode_number=$${params.length + 1}`, params.push(x.episode_number);
-      else
-        clause += ` AND episode_number IS NULL`;
-      clause += `)`;
+      // always use 0 if undefined/null
+      const season = x.season_number !== undefined && x.season_number !== null ? x.season_number : 0;
+      const episode = x.episode_number !== undefined && x.episode_number !== null ? x.episode_number : 0;
+      let clause = `(item_type=$${params.length + 1} AND item_id=$${params.length + 2} AND season_number=$${params.length + 3} AND episode_number=$${params.length + 4})`;
+      params.push(x.item_type, String(x.item_id), season, episode);
       wheres.push(clause);
     });
     const sql = `SELECT * FROM watched WHERE user_id=$1 AND (${wheres.join(' OR ')})`;
@@ -53,8 +47,8 @@ export default async function handler(req, res) {
     const stateMap = {};
     rows.forEach(row => {
       let k = `${row.item_type}:${row.item_id}`;
-      if (row.season_number !== null) k += `:s${row.season_number}`;
-      if (row.episode_number !== null) k += `:e${row.episode_number}`;
+      if (row.season_number !== 0) k += `:s${row.season_number}`;
+      if (row.episode_number !== 0) k += `:e${row.episode_number}`;
       stateMap[k] = row.state;
     });
 
@@ -68,37 +62,26 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
+    // Always use 0 for missing season/episode
+    const season = season_number !== undefined && season_number !== null ? season_number : 0;
+    const episode = episode_number !== undefined && episode_number !== null ? episode_number : 0;
+
     if (state === 'not_watched') {
       // Remove entry if exists
       await pool.query(
-          `DELETE FROM watched WHERE user_id=$1 AND item_type=$2 AND item_id=$3
-        AND ${season_number !== undefined ? 'season_number=$4' : 'season_number IS NULL'}
-        AND ${episode_number !== undefined ? `episode_number=$${season_number !== undefined ? 5 : 4}` : `episode_number IS NULL`}`,
-          [
-            userId,
-            item_type,
-            String(item_id),
-            ...(season_number !== undefined ? [season_number] : []),
-            ...(episode_number !== undefined ? [episode_number] : []),
-          ]
+          `DELETE FROM watched WHERE user_id=$1 AND item_type=$2 AND item_id=$3 AND season_number=$4 AND episode_number=$5`,
+          [userId, item_type, String(item_id), season, episode]
       );
       return res.json({ ok: true, deleted: true });
     } else {
       // Upsert watched state
       const { rows } = await pool.query(
           `INSERT INTO watched (user_id, item_type, item_id, season_number, episode_number, state, updated_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW())
-        ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
         DO UPDATE SET state=$6, updated_at=NOW()
-        RETURNING *`,
-          [
-            userId,
-            item_type,
-            String(item_id),
-            season_number !== undefined ? season_number : null,
-            episode_number !== undefined ? episode_number : null,
-            state,
-          ]
+                          RETURNING *`,
+          [userId, item_type, String(item_id), season, episode, state]
       );
       res.json({ ok: true, row: rows[0] });
     }
