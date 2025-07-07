@@ -17,9 +17,7 @@ function getUserIdFromReq(req) {
 
 export default async function handler(req, res) {
   const userId = getUserIdFromReq(req);
-  if (!userId) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
+  if (!userId) return res.status(401).json({ error: 'Not authenticated' });
 
   const pool = getDbPool();
 
@@ -36,39 +34,32 @@ export default async function handler(req, res) {
           )
       ).rows;
 
-      // Series (most recent 5 watching)
-      const seriesRows = (
+      // TV: combine tmdb-tv, tmdb-tv-season, tmdb-tv-episode (most recent 5 watching)
+      const tvRows = (
           await pool.query(
               `SELECT * FROM watched
-               WHERE user_id=$1 AND item_type='tmdb-tv' AND state='watching'
+               WHERE user_id=$1
+                 AND item_type IN ('tmdb-tv', 'tmdb-tv-season', 'tmdb-tv-episode')
+                 AND state='watching'
                ORDER BY updated_at DESC LIMIT 5`,
               [userId]
           )
       ).rows;
 
-      // Old logic for anime (backwards compatibility)
-      // Anime Movies: item_type='anime', season_number=0
-      const oldAnimeMoviesRows = (
+      // Anime: combine anime-series, anime-episode (most recent 5 watching)
+      const animeRows = (
           await pool.query(
               `SELECT * FROM watched
-               WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number=0
-               ORDER BY updated_at DESC LIMIT 5`,
-              [userId]
-          )
-      ).rows;
-
-      // Anime Series: item_type='anime', season_number!=0
-      const oldAnimeSeriesRows = (
-          await pool.query(
-              `SELECT * FROM watched
-           WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number!=0
+           WHERE user_id=$1 
+             AND item_type IN ('anime-series', 'anime-episode')
+             AND state='watching'
            ORDER BY updated_at DESC LIMIT 5`,
               [userId]
           )
       ).rows;
 
-      // New logic for separate anime-movie and anime-series
-      const newAnimeMoviesRows = (
+      // Anime Movies (most recent 5 watching)
+      const animeMoviesRows = (
           await pool.query(
               `SELECT * FROM watched
                WHERE user_id=$1 AND item_type='anime-movie' AND state='watching'
@@ -77,33 +68,139 @@ export default async function handler(req, res) {
           )
       ).rows;
 
-      const newAnimeSeriesRows = (
-          await pool.query(
-              `SELECT * FROM watched
-           WHERE user_id=$1 AND item_type='anime-series' AND state='watching'
-           ORDER BY updated_at DESC LIMIT 5`,
-              [userId]
-          )
-      ).rows;
+      // Fetch details for each item for display (title/poster)
+      async function enrichRows(rows) {
+        // Group by type for optimal batching
+        const tmdbMovieIds = [];
+        const tmdbTvIds = [];
+        const animeIds = [];
+        const animeEpisodeIds = [];
+        rows.forEach(row => {
+          if (row.item_type === 'tmdb-movie') tmdbMovieIds.push(row.item_id);
+          else if (row.item_type === 'tmdb-tv') tmdbTvIds.push(row.item_id);
+          else if (row.item_type === 'anime-movie' || row.item_type === 'anime-series') animeIds.push(row.item_id);
+          else if (row.item_type === 'anime-episode') animeEpisodeIds.push(row.item_id);
+        });
+        // TMDB movies
+        let tmdbMovieData = {};
+        if (tmdbMovieIds.length) {
+          const results = await fetch(`https://api.themoviedb.org/3/movie?ids=${tmdbMovieIds.join(',')}&api_key=${process.env.TMDB_API_KEY}`).then(r => r.json()).catch(() => []);
+          if (Array.isArray(results)) {
+            for (const movie of results) {
+              tmdbMovieData[movie.id] = movie;
+            }
+          }
+        }
+        // TMDB TV (for top-level shows only; seasons/episodes handled below)
+        let tmdbTvData = {};
+        if (tmdbTvIds.length) {
+          const results = await fetch(`https://api.themoviedb.org/3/tv?ids=${tmdbTvIds.join(',')}&api_key=${process.env.TMDB_API_KEY}`).then(r => r.json()).catch(() => []);
+          if (Array.isArray(results)) {
+            for (const tv of results) {
+              tmdbTvData[tv.id] = tv;
+            }
+          }
+        }
+        // AniList: fetch each anime (series/movie)
+        let animeData = {};
+        if (animeIds.length) {
+          for (const id of animeIds) {
+            try {
+              const res = await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  query: `
+                    query ($id: Int) {
+                      Media(id: $id) {
+                        id
+                        title { english romaji }
+                        coverImage { large }
+                        seasonYear
+                      }
+                    }`,
+                  variables: { id: Number(id) }
+                })
+              });
+              const data = await res.json();
+              if (data?.data?.Media) animeData[id] = data.data.Media;
+            } catch {}
+          }
+        }
+        // Anime episodes: get show data for episode parent (use episode row.item_id as anime id)
+        let animeEpisodeData = {};
+        if (animeEpisodeIds.length) {
+          for (const id of animeEpisodeIds) {
+            try {
+              const res = await fetch('https://graphql.anilist.co', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  query: `
+                    query ($id: Int) {
+                      Media(id: $id) {
+                        id
+                        title { english romaji }
+                        coverImage { large }
+                        seasonYear
+                      }
+                    }`,
+                  variables: { id: Number(id) }
+                })
+              });
+              const data = await res.json();
+              if (data?.data?.Media) animeEpisodeData[id] = data.data.Media;
+            } catch {}
+          }
+        }
 
-      // Combine old and new anime movies
-      const combinedAnimeMovies = [...oldAnimeMoviesRows, ...newAnimeMoviesRows].sort(
-          (a, b) => b.updated_at - a.updated_at
-      );
-      // Combine old and new anime series
-      const combinedAnimeSeries = [...oldAnimeSeriesRows, ...newAnimeSeriesRows].sort(
-          (a, b) => b.updated_at - a.updated_at
-      );
+        // Return rows with attached metadata
+        return rows.map(row => {
+          let meta = {};
+          if (row.item_type === 'tmdb-movie' && tmdbMovieData[row.item_id]) {
+            meta = {
+              title: tmdbMovieData[row.item_id].title,
+              poster_path: tmdbMovieData[row.item_id].poster_path,
+              year: (tmdbMovieData[row.item_id].release_date || '').split('-')[0]
+            };
+          } else if (row.item_type === 'tmdb-tv' && tmdbTvData[row.item_id]) {
+            meta = {
+              title: tmdbTvData[row.item_id].name,
+              poster_path: tmdbTvData[row.item_id].poster_path,
+              year: (tmdbTvData[row.item_id].first_air_date || '').split('-')[0]
+            };
+          } else if ((row.item_type === 'anime-movie' || row.item_type === 'anime-series') && animeData[row.item_id]) {
+            meta = {
+              title: animeData[row.item_id].title.english || animeData[row.item_id].title.romaji,
+              coverImage: animeData[row.item_id].coverImage,
+              year: animeData[row.item_id].seasonYear
+            };
+          } else if (row.item_type === 'anime-episode' && animeEpisodeData[row.item_id]) {
+            meta = {
+              title: animeEpisodeData[row.item_id].title.english || animeEpisodeData[row.item_id].title.romaji,
+              coverImage: animeEpisodeData[row.item_id].coverImage,
+              year: animeEpisodeData[row.item_id].seasonYear,
+              episode_number: row.episode_number
+            };
+          }
+          return { ...row, ...meta };
+        });
+      }
 
-      // Return the top 5 of each combined set
+      const enrichedMovies = await enrichRows(moviesRows);
+      const enrichedTv = await enrichRows(tvRows);
+      const enrichedAnimeMovies = await enrichRows(animeMoviesRows);
+      const enrichedAnime = await enrichRows(animeRows);
+
       res.json({
         ok: true,
-        movies: moviesRows,
-        series: seriesRows,
-        animeMovies: combinedAnimeMovies.slice(0, 5),
-        animeSeries: combinedAnimeSeries.slice(0, 5),
+        movies: enrichedMovies,
+        series: enrichedTv,
+        animeMovies: enrichedAnimeMovies,
+        animeSeries: enrichedAnime
       });
     } catch (e) {
+      console.error(e);
       res.status(500).json({ ok: false, error: 'Failed to fetch continue watching.' });
     }
     return;
@@ -124,7 +221,6 @@ export default async function handler(req, res) {
     const wheres = [];
     const params = [userId];
     items.forEach((x) => {
-      // always use 0 if undefined/null
       const season = x.season_number !== undefined && x.season_number !== null ? x.season_number : 0;
       const episode = x.episode_number !== undefined && x.episode_number !== null ? x.episode_number : 0;
       const clause = `(item_type=$${params.length + 1} AND item_id=$${params.length + 2} AND season_number=$${
@@ -155,26 +251,23 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
-    // Always use 0 for missing season/episode
     const season = season_number !== undefined && season_number !== null ? season_number : 0;
     const episode = episode_number !== undefined && episode_number !== null ? episode_number : 0;
 
     if (state === 'not_watched') {
-      // Remove entry if exists
       await pool.query(
           `DELETE FROM watched
-         WHERE user_id=$1 AND item_type=$2 AND item_id=$3 AND season_number=$4 AND episode_number=$5`,
+           WHERE user_id=$1 AND item_type=$2 AND item_id=$3 AND season_number=$4 AND episode_number=$5`,
           [userId, item_type, String(item_id), season, episode]
       );
       return res.json({ ok: true, deleted: true });
     } else {
-      // Upsert watched state
       const { rows } = await pool.query(
           `INSERT INTO watched (user_id, item_type, item_id, season_number, episode_number, state, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())
-         ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
          DO UPDATE SET state=$6, updated_at=NOW()
-         RETURNING *`,
+                           RETURNING *`,
           [userId, item_type, String(item_id), season, episode, state]
       );
       return res.json({ ok: true, row: rows[0] });
