@@ -67,7 +67,7 @@
       border-radius: 5px;
     }
     .watched-state {
-      display: inline-block;
+      display: none; /* Only shown for logged in users */
       border-radius: 14px;
       padding: 3px 12px;
       font-size: 13px;
@@ -141,37 +141,51 @@
   function displayEpisodesJikan(episodes) {
     $('#episodes-results').html('');
     lastEpisodes = [];
+    const isLoggedIn = !!localStorage.getItem('token');
     episodes.forEach(ep => {
       const title = ep.title || `Episode ${ep.mal_id}`;
       const number = ep.mal_id;
       lastEpisodes.push({ episode_number: number, title });
+      const watchedSpan = isLoggedIn
+              ? `<span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">Not Watched</span>`
+              : '';
       $('#episodes-results').append(`
         <li class="episode-item" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">
           <div class="episode-number">Ep ${number}</div>
           <div class="episode-title">${title}</div>
-          <span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">Not Watched</span>
+          ${watchedSpan}
           <button style="display:none"></button>
         </li>
       `);
     });
-    batchUpdateWatchedAnimeEpisodes();
+    if(isLoggedIn) {
+      $('.watched-state').show();
+      batchUpdateWatchedAnimeEpisodes();
+    }
   }
 
   function displayEpisodesAnilist(total) {
     $('#episodes-results').html('');
     lastEpisodes = [];
+    const isLoggedIn = !!localStorage.getItem('token');
     for (let i = 1; i <= total; i++) {
       lastEpisodes.push({ episode_number: i, title: `Episode ${i}` });
+      const watchedSpan = isLoggedIn
+              ? `<span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">Not Watched</span>`
+              : '';
       $('#episodes-results').append(`
         <li class="episode-item" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">
           <div class="episode-number">Ep ${i}</div>
           <div class="episode-title">Episode ${i}</div>
-          <span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">Not Watched</span>
+          ${watchedSpan}
           <button style="display:none"></button>
         </li>
       `);
     }
-    batchUpdateWatchedAnimeEpisodes();
+    if(isLoggedIn) {
+      $('.watched-state').show();
+      batchUpdateWatchedAnimeEpisodes();
+    }
     $('#pagination').html('');
   }
 
@@ -250,8 +264,8 @@
               if (!data.states) return;
               items.forEach(item => {
                 const key = watchedKey(item.item_type, item.item_id, item.episode_number);
-                const state = data.states[key] || "not_watched";
                 const $el = $('.watched-state[data-type="anime-episode"][data-id="' + item.item_id + '"][data-episode="' + item.episode_number + '"]');
+                const state = data.states[key] || "not_watched";
                 $el.removeClass("watched-not watched-watching watched-watched")
                         .addClass(watchedStateClass(state))
                         .text(watchedStateText(state));

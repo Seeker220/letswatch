@@ -70,7 +70,7 @@
             border-radius: 5px;
         }
         .watched-state {
-            display: inline-block;
+            display: none; /* Shown only for logged in users */
             border-radius: 14px;
             padding: 3px 12px;
             font-size: 13px;
@@ -135,21 +135,28 @@
     // Display episodes
     function displayEpisodes(episodes) {
         $('#episodes-results').html('');
+        const isLoggedIn = !!localStorage.getItem('token');
         episodes.forEach(episode => {
             const posterUrl = episode.still_path ? `https://image.tmdb.org/t/p/w200${episode.still_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
             const episodeNumber = episode.episode_number;
+            const watchedStateSpan = isLoggedIn
+                ? `<span class="watched-state watched-not" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">Not Watched</span>`
+                : '';
             const episodeHtml = `
-                    <li class="episode-item" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">
-                        <img src="${posterUrl}" alt="${episode.name} poster" class="episode-poster">
-                        <div class="episode-number">Ep - ${episodeNumber}</div>
-                        <div class="episode-title">${episode.name}</div>
-                        <span class="watched-state watched-not" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">Not Watched</span>
-                        <button class="play-button" onclick="playEpisode(${seasonNumber}, ${episode.episode_number})">Play</button>
-                    </li>
-                `;
+                <li class="episode-item" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">
+                    <img src="${posterUrl}" alt="${episode.name} poster" class="episode-poster">
+                    <div class="episode-number">Ep - ${episodeNumber}</div>
+                    <div class="episode-title">${episode.name}</div>
+                    ${watchedStateSpan}
+                    <button class="play-button" onclick="playEpisode(${seasonNumber}, ${episodeNumber})">Play</button>
+                </li>
+            `;
             $('#episodes-results').append(episodeHtml);
         });
-        batchUpdateWatchedEpisodes();
+        if(isLoggedIn) {
+            $('.watched-state').show();
+            batchUpdateWatchedEpisodes();
+        }
     }
 
     function playEpisode(season, episode) {

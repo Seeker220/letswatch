@@ -47,7 +47,7 @@
             font-weight: bold;
         }
         .watched-state {
-            display: inline-block;
+            display: none;   /* Hide by default; shown only for logged in users */
             border-radius: 14px;
             padding: 3px 12px;
             font-size: 13px;
@@ -120,19 +120,28 @@
     function displaySeasons(seasons) {
         $('#seasons-results').html(''); // Clear previous results
 
+        // Only show watched-state if logged in
+        const isLoggedIn = !!localStorage.getItem('token');
+
         seasons.forEach(season => {
             const seasonNumber = season.season_number;
             const seasonName = season.name && season.name !== `Season ${seasonNumber}` ? `: ${season.name}` : '';
+            const watchedStateSpan = isLoggedIn
+                ? `<span class="watched-state watched-not" data-type="tmdb-tv-season" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="event.stopPropagation(); handleWatchedClick(this);"></span>`
+                : '';
             const seasonHtml = `
-                    <li class="season-item" data-type="tmdb-tv-season" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="goToEpisodes(${seasonNumber})">
-                        <div class="season-title">Season ${seasonNumber}${seasonName}</div>
-                        <span class="watched-state watched-not" data-type="tmdb-tv-season" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="event.stopPropagation(); handleWatchedClick(this);">Not Watched</span>
-                    </li>
-                `;
+                <li class="season-item" data-type="tmdb-tv-season" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="goToEpisodes(${seasonNumber})">
+                    <div class="season-title">Season ${seasonNumber}${seasonName}</div>
+                    ${watchedStateSpan}
+                </li>
+            `;
             $('#seasons-results').append(seasonHtml);
         });
 
-        batchUpdateWatchedSeasons();
+        if (isLoggedIn) {
+            $('.watched-state').show();
+            batchUpdateWatchedSeasons();
+        }
     }
 
     // Function to redirect to episodes.html with selected season
@@ -199,9 +208,7 @@
     fetchSeasons(tmdbId);
 </script>
 
-<!-- Your existing HTML content -->
-
-<!-- Include Common JavaScript File -->
-<script src="/main.js"></script>
+<!-- Include Common JavaScript File (optional for your project) -->
+<!-- <script src="/main.js"></script> -->
 </body>
 </html>
