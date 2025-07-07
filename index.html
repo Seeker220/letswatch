@@ -272,16 +272,19 @@
             }
         }
 
-        function playItem(id, category) {
-            window.open(`https://anyembed.xyz/movie/${id}`, '_blank');
-        }
+		function playItem(id, category) {
+			if (category === 'movies') {
+				window.location.href = `play.html?type=tmdb-movie&id=${id}`;
+			}
+		}
+
+		function playAnimeMovie(id) {
+			window.location.href = `play.html?type=anime&id=${id}&ep=1`;
+		}
+
 
         function viewSeasons(id) {
             window.location.href = `seasons.html?id=${id}`;
-        }
-
-        function playAnimeMovie(id) {
-            console.log('Play anime movie:', id);
         }
 
 		function viewAnimeEpisodes(id) {

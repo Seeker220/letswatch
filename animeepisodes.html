@@ -32,6 +32,11 @@
       border-radius: 5px;
       text-align: center;
       position: relative;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+    .episode-item:hover {
+      transform: scale(1.03);
     }
     .episode-title {
       font-size: 16px;
@@ -117,7 +122,7 @@
       const img = ep.thumbnail || 'https://via.placeholder.com/200x130?text=No+Image';
       const title = ep.title || `Episode ${idx + 1}`;
       $('#episodes-results').append(`
-        <li class="episode-item">
+        <li class="episode-item" onclick="playAnimeEp(${idx + 1})">
           <img src="${img}" class="episode-poster">
           <div class="episode-number">Ep ${idx + 1}</div>
           <div class="episode-title">${title}</div>
@@ -134,7 +139,7 @@
       const title = ep.title || `Episode ${ep.mal_id}`;
       const number = ep.mal_id;
       $('#episodes-results').append(`
-        <li class="episode-item">
+        <li class="episode-item" onclick="playAnimeEp(${number})">
           <img src="${img}" class="episode-poster">
           <div class="episode-number">Ep ${number}</div>
           <div class="episode-title">${title}</div>
@@ -147,7 +152,7 @@
     $('#episodes-results').html('');
     for (let i = 1; i <= total; i++) {
       $('#episodes-results').append(`
-        <li class="episode-item">
+        <li class="episode-item" onclick="playAnimeEp(${i})">
           <img src="https://via.placeholder.com/200x130?text=Ep+${i}" class="episode-poster">
           <div class="episode-number">Ep ${i}</div>
           <div class="episode-title">Episode ${i}</div>
@@ -183,7 +188,6 @@
 
   async function loadEpisodes() {
     try {
-      // Try AniList streaming episodes first
       const aniRes = await fetchFromAnilist(anilistId);
       const media = aniRes?.data?.Media;
       const streamingEpisodes = media?.streamingEpisodes;
@@ -193,7 +197,6 @@
         return;
       }
 
-      // Fallback to Jikan
       const jikanRes = await fetchFromJikan(currentPage);
       const episodes = jikanRes?.data;
       const hasEpisodes = Array.isArray(episodes) && episodes.length > 0;
@@ -205,7 +208,6 @@
         return;
       }
 
-      // Fallback to AniList episode count
       const total = media?.episodes || 0;
       if (total > 0) {
         displayEpisodesAnilist(total);
@@ -218,7 +220,11 @@
     }
   }
 
-  // On page load
+  function playAnimeEp(ep) {
+    window.location.href = `play.html?type=anime&id=${anilistId}&ep=${ep}`;
+  }
+
+  // Init
   loadEpisodes();
 </script>
 

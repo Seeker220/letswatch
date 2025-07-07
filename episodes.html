@@ -119,11 +119,11 @@
             });
         }
 
-        // Function to play the episode
-        function playEpisode(season, episode) {
-            const playUrl = `https://anyembed.xyz/tv/${tmdbId}/${season}/${episode}`; // Use TMDB ID for embed URL
-            window.open(playUrl, '_blank'); // Open in a new tab
-        }
+		function playEpisode(season, episode) {
+			const playUrl = `play.html?type=tmdb-tv&id=${tmdbId}&season=${season}&episode=${episode}`;
+			window.location.href = playUrl;
+		}
+
 
         // Fetch episodes on page load using the TMDB ID directly
         fetchEpisodes(seasonNumber, tmdbId);
