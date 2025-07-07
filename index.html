@@ -226,6 +226,7 @@
     let totalPagesAnimeSeries = 1;
     const pageGroupSize = 10;
 
+    // --- Watched state helpers ---
     function watchedKey(item_type, item_id) {
         return `${item_type}:${item_id}`;
     }
@@ -240,11 +241,13 @@
         return "Not Watched";
     }
 
+    // To be filled after each search result render
     let lastMovieResults = [];
     let lastSeriesResults = [];
     let lastAnimeMovies = [];
     let lastAnimeSeries = [];
 
+    // --- Helper: Hide/Show watched-state for guests ---
     function updateWatchedStateVisibility() {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -254,7 +257,7 @@
         }
     }
 
-    // CONTINUE WATCHING LOGIC
+    // --- CONTINUE WATCHING LOGIC ---
     function fetchContinueWatching() {
         const token = localStorage.getItem('token');
         if (!token) {
@@ -269,11 +272,14 @@
             .then(data => {
                 if (!data.ok) return;
                 const { movies, series, animeMovies, animeSeries } = data;
+
+                // Render each section with top 5, as the server only returns up to 5 anyway
                 renderContinueSection('movies', movies || []);
                 renderContinueSection('series', series || []);
                 renderContinueSection('anime-movies', animeMovies || []);
                 renderContinueSection('anime-series', animeSeries || []);
 
+                // Show/hide sections as needed
                 $('#continue-movies-section').toggle((movies || []).length > 0);
                 $('#continue-series-section').toggle((series || []).length > 0);
                 $('#continue-anime-movies-section').toggle((animeMovies || []).length > 0);
@@ -293,7 +299,7 @@
             buttonAction = (id) => `play.html?type=tmdb-movie&id=${id}`;
         } else if (type === 'series') {
             rowId = '#continue-series-row';
-            buttonLabel = 'View';
+            buttonLabel = 'View Seasons';
             buttonAction = (id) => `seasons.html?id=${id}`;
         } else if (type === 'anime-movies') {
             rowId = '#continue-anime-movies-row';
@@ -301,31 +307,35 @@
             buttonAction = (id) => `play.html?type=anime-movie&id=${id}&ep=1`;
         } else if (type === 'anime-series') {
             rowId = '#continue-anime-series-row';
-            buttonLabel = 'View';
+            buttonLabel = 'View Episodes';
             buttonAction = (id) => `animeepisodes.html?id=${id}`;
         }
 
         $(rowId).empty();
         items.slice(0, 5).forEach(item => {
+            // If the server provides some fields for title/poster, try to use them:
             let poster = 'https://via.placeholder.com/140x120?text=No+Image';
             let title = '';
             let year = '';
 
-            // Try all possible metadata fields supplied by backend
             if (item.poster_path) {
+                // If it's from tmdb
                 poster = imageUrl + item.poster_path;
-            } else if (item.coverImage && item.coverImage.large) {
-                poster = item.coverImage.large;
+                title = item.title || item.name || '';
+                if (item.first_air_date) {
+                    year = ` (${item.first_air_date.split('-')[0]})`;
+                } else if (item.release_date) {
+                    year = ` (${item.release_date.split('-')[0]})`;
+                }
+            } else if (item.coverImage) {
+                // If it's from anilist
+                poster = item.coverImage.large || poster;
+                title = item.title_english || item.title_romaji || item.title || '';
+                if (item.seasonYear) {
+                    year = ` (${item.seasonYear})`;
+                }
             }
-            title = item.title || item.name || item.title_english || item.title_romaji || '';
-            if (item.year) year = ` (${item.year})`;
-            // For episodes/seasons, append episode/season num if available
-            if (item.item_type && item.item_type.indexOf('episode') !== -1 && item.episode_number) {
-                title += ` Ep ${item.episode_number}`;
-            }
-            if (item.item_type && item.item_type.indexOf('season') !== -1 && item.season_number) {
-                title += ` S${item.season_number}`;
-            }
+
             $(rowId).append(`
                 <div class="continue-item">
                     <img class="continue-poster" src="${poster}">
@@ -336,6 +346,7 @@
         });
     }
 
+    // --- Search and Results Logic ---
     function searchMovies(query) {
         $('#continue-watching-wrapper').hide();
         $.get(`/api/searchMovies?q=${encodeURIComponent(query)}&page=${currentPageMovies}`, function(data) {
@@ -376,18 +387,23 @@
             totalPagesAnimeMovies = res.totalPages.movies;
             totalPagesAnimeSeries = res.totalPages.series;
 
+            // Anime Movies
             if (res.animeMovies && res.animeMovies.length) {
                 lastAnimeMovies = res.animeMovies;
                 res.animeMovies.forEach(anime => {
                     const title = anime.title.english || anime.title.romaji || '';
                     const year = anime.seasonYear || 'N/A';
                     const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                    // This item_type is anime-movie
                     $('#anime-movies-results').append(`
                         <div class="movie-item" data-type="anime-movie" data-id="${anime.id}">
                             <img src="${poster}" class="movie-poster">
                             <div class="movie-title">${title} (${year})</div>
-                            <span class="watched-state watched-not" data-type="anime-movie" data-id="${anime.id}">Not Watched</span>
-                            <button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>
+                            <span class="watched-state watched-not"
+                                  data-type="anime-movie"
+                                  data-id="${anime.id}">Not Watched</span>
+                            <button class="play-button"
+                                    onclick="playAnimeMovie(${anime.id})">Play</button>
                         </div>
                     `);
                 });
@@ -397,18 +413,25 @@
                 lastAnimeMovies = [];
             }
 
+            // Anime Series
             if (res.animeSeries && res.animeSeries.length) {
                 lastAnimeSeries = res.animeSeries;
                 res.animeSeries.forEach(anime => {
                     const title = anime.title.english || anime.title.romaji || '';
                     const year = anime.seasonYear || 'N/A';
                     const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                    // This item_type is anime-series
                     $('#anime-series-results').append(`
                         <div class="movie-item" data-type="anime-series" data-id="${anime.id}">
                             <img src="${poster}" class="movie-poster">
                             <div class="movie-title">${title} (${year})</div>
-                            <span class="watched-state watched-not" data-type="anime-series" data-id="${anime.id}">Not Watched</span>
-                            <button class="play-button" onclick="window.location.href='animeepisodes.html?id=${anime.id}&mal=${anime.idMal}'">View Episodes</button>
+                            <span class="watched-state watched-not"
+                                  data-type="anime-series"
+                                  data-id="${anime.id}">Not Watched</span>
+                            <button class="play-button"
+                                    onclick="window.location.href='animeepisodes.html?id=${anime.id}&mal=${anime.idMal}'">
+                                View Episodes
+                            </button>
                         </div>
                     `);
                 });
@@ -437,10 +460,13 @@
                 <div class="movie-item" data-type="${item_type}" data-id="${id}">
                     <img src="${poster}" class="movie-poster">
                     <div class="movie-title">${title} (${year})</div>
-                    <span class="watched-state watched-not" data-type="${item_type}" data-id="${id}">Not Watched</span>
+                    <span class="watched-state watched-not"
+                          data-type="${item_type}"
+                          data-id="${id}">Not Watched</span>
                     ${category === 'movies'
                 ? `<button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>`
-                : `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>`}
+                : `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>`
+            }
                 </div>
             `);
         });
@@ -451,6 +477,7 @@
 
     function updatePagination(category) {
         let currentPage, totalPages, container;
+
         if (category === 'movies') {
             currentPage = currentPageMovies;
             totalPages = totalPagesMovies;
@@ -468,14 +495,17 @@
             totalPages = totalPagesAnimeSeries;
             container = '#anime-series-pagination';
         }
+
         let start = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
         let end = Math.min(start + pageGroupSize - 1, totalPages);
         let html = '';
+
         if (start > 1) html += `<button onclick="changePage('${category}', ${start - 1})">&lt;</button>`;
         for (let i = start; i <= end; i++) {
             html += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage('${category}', ${i})">${i}</button>`;
         }
         if (end < totalPages) html += `<button onclick="changePage('${category}', ${end + 1})">&gt;</button>`;
+
         $(container).html(html);
     }
 
@@ -484,6 +514,7 @@
         else if (category === 'series') currentPageSeries = page;
         else if (category === 'anime-movies') animeMoviesPage = page;
         else if (category === 'anime-series') animeSeriesPage = page;
+
         const query = $('#search-input').val();
         if (query) {
             if (category === 'movies' || category === 'series') {
@@ -499,13 +530,16 @@
             window.location.href = `play.html?type=tmdb-movie&id=${id}`;
         }
     }
+
     function playAnimeMovie(id) {
         window.location.href = `play.html?type=anime-movie&id=${id}&ep=1`;
     }
+
     function viewSeasons(id) {
         window.location.href = `seasons.html?id=${id}`;
     }
 
+    // --- Watched state batching ---
     function batchUpdateWatched(category) {
         let items = [];
         if (category === "movies") {
@@ -515,13 +549,16 @@
             if (!lastSeriesResults.length) return;
             items = lastSeriesResults.map(s => ({ item_type: "tmdb-tv", item_id: s.id }));
         } else if (category === "anime") {
+            // Now gather both anime-movie and anime-series
             const animeMovieItems = (lastAnimeMovies || []).map(a => ({ item_type: "anime-movie", item_id: a.id }));
             const animeSeriesItems = (lastAnimeSeries || []).map(a => ({ item_type: "anime-series", item_id: a.id }));
             items = [...animeMovieItems, ...animeSeriesItems];
         }
         if (!items.length) return;
+
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) return; // Not logged in, leave as default "Not Watched"
+
         fetch('/api/watched?items=' + encodeURIComponent(JSON.stringify(items)), {
             headers: { Authorization: 'Bearer ' + token }
         })
@@ -540,6 +577,7 @@
         updateWatchedStateVisibility();
     }
 
+    // --- Watched state cycling on click ---
     $(document).on('click', '.watched-state', function (e) {
         e.preventDefault();
         if (!localStorage.getItem('token')) {
@@ -554,9 +592,12 @@
         else if ($el.hasClass('watched-watching')) state = 'watched';
         else state = 'not_watched';
 
+        // Update UI immediately
         $el.removeClass('watched-not watched-watching watched-watched');
-        $el.addClass(watchedStateClass(state)).text(watchedStateText(state));
+        $el.addClass(watchedStateClass(state))
+            .text(watchedStateText(state));
 
+        // Post to API
         fetch('/api/watched', {
             method: 'POST',
             headers: {
@@ -571,6 +612,7 @@
         });
     });
 
+    // --- Account/UI logic ---
     $('#search-button').on('click', function () {
         const query = $('#search-input').val();
         if (query) {
@@ -601,12 +643,14 @@
     const loginBtn = document.getElementById('login-btn');
     const logoutBtn = document.getElementById('logout-btn');
 
+    // Show/hide popup
     accountIcon.onclick = () => {
         if (accountPopup.style.display === 'block') {
             accountPopup.style.display = 'none';
             return;
         }
         accountPopup.style.display = 'block';
+        // Position popup under icon
         accountPopup.style.top = (accountIcon.offsetTop + 36) + 'px';
         accountPopup.style.right = '30px';
 
@@ -647,20 +691,27 @@
         }
     };
 
+    // Hide popup on click outside
     document.addEventListener('click', e => {
         if (e.target !== accountIcon && !accountPopup.contains(e.target)) {
             accountPopup.style.display = 'none';
         }
     });
 
-    myAccountBtn.onclick = () => { window.location.href = 'user.html'; }
-    loginBtn.onclick = () => { window.location.href = 'login.html'; }
+    // Button actions
+    myAccountBtn.onclick = () => {
+        window.location.href = 'user.html';
+    };
+    loginBtn.onclick = () => {
+        window.location.href = 'login.html';
+    };
     logoutBtn.onclick = () => {
         localStorage.removeItem('token');
         accountPopup.style.display = 'none';
         location.reload();
     };
 
+    // --- On page load: show continue watching if logged in ---
     $(function() {
         updateWatchedStateVisibility();
         if (localStorage.getItem('token')) {
