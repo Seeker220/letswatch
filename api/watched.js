@@ -21,6 +21,51 @@ export default async function handler(req, res) {
 
   const pool = getDbPool();
 
+  // CONTINUE WATCHING: Return lists for dashboard if ?continue=1
+  if (req.method === 'GET' && req.query.continue === '1') {
+    try {
+      // Movies (most recent 5 watching)
+      const moviesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='tmdb-movie' AND state='watching'
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      // Series (most recent 5 watching)
+      const seriesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='tmdb-tv' AND state='watching'
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      // Anime Movies (most recent 5 watching, item_type='anime' and season_number=0)
+      const animeMoviesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number=0
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      // Anime Series (most recent 5 watching, item_type='anime' and season_number!=0)
+      // Optionally, you can use a different marker to distinguish anime series if you use one.
+      const animeSeriesRows = (await pool.query(
+          `SELECT * FROM watched
+         WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number!=0
+         ORDER BY updated_at DESC LIMIT 5`, [userId]
+      )).rows;
+
+      res.json({
+        ok: true,
+        movies: moviesRows,
+        series: seriesRows,
+        animeMovies: animeMoviesRows,
+        animeSeries: animeSeriesRows
+      });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: 'Failed to fetch continue watching.' });
+    }
+    return;
+  }
+
   // Batch GET watched states
   if (req.method === 'GET') {
     let items = [];
@@ -53,6 +98,7 @@ export default async function handler(req, res) {
     });
 
     res.json({ states: stateMap });
+    return;
   }
 
   // POST: Set watched state for an item
@@ -85,7 +131,8 @@ export default async function handler(req, res) {
       );
       res.json({ ok: true, row: rows[0] });
     }
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
+    return;
   }
+
+  res.status(405).json({ error: 'Method not allowed' });
 }
