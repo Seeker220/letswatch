@@ -24,7 +24,7 @@
     }
     .episode-item {
       width: 200px;
-      height: 200px;
+      height: 100px;
       padding: 10px;
       border: 1px solid #333;
       margin: 10px;
@@ -34,6 +34,9 @@
       position: relative;
       cursor: pointer;
       transition: transform 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
     .episode-item:hover {
       transform: scale(1.03);
@@ -45,12 +48,6 @@
     .episode-number {
       color: #ff9900;
       font-weight: bold;
-    }
-    .episode-poster {
-      width: 100%;
-      height: 130px;
-      object-fit: contain;
-      border-radius: 5px;
     }
     .pagination {
       text-align: center;
@@ -94,14 +91,6 @@
       query ($id: Int) {
         Media(id: $id, type: ANIME) {
           episodes
-          streamingEpisodes {
-            title
-            thumbnail
-          }
-          title {
-            romaji
-            english
-          }
         }
       }
     `;
@@ -116,31 +105,13 @@
     });
   }
 
-  function displayStreamingEpisodes(episodes) {
-    $('#episodes-results').html('');
-    episodes.forEach((ep, idx) => {
-      const img = ep.thumbnail || 'https://via.placeholder.com/200x130?text=No+Image';
-      const title = ep.title || `Episode ${idx + 1}`;
-      $('#episodes-results').append(`
-        <li class="episode-item" onclick="playAnimeEp(${idx + 1})">
-          <img src="${img}" class="episode-poster">
-          <div class="episode-number">Ep ${idx + 1}</div>
-          <div class="episode-title">${title}</div>
-        </li>
-      `);
-    });
-    $('#pagination').html('');
-  }
-
   function displayEpisodesJikan(episodes) {
     $('#episodes-results').html('');
     episodes.forEach(ep => {
-      const img = ep.images?.jpg?.image_url || 'https://via.placeholder.com/200x130?text=No+Image';
       const title = ep.title || `Episode ${ep.mal_id}`;
       const number = ep.mal_id;
       $('#episodes-results').append(`
         <li class="episode-item" onclick="playAnimeEp(${number})">
-          <img src="${img}" class="episode-poster">
           <div class="episode-number">Ep ${number}</div>
           <div class="episode-title">${title}</div>
         </li>
@@ -153,7 +124,6 @@
     for (let i = 1; i <= total; i++) {
       $('#episodes-results').append(`
         <li class="episode-item" onclick="playAnimeEp(${i})">
-          <img src="https://via.placeholder.com/200x130?text=Ep+${i}" class="episode-poster">
           <div class="episode-number">Ep ${i}</div>
           <div class="episode-title">Episode ${i}</div>
         </li>
@@ -188,15 +158,6 @@
 
   async function loadEpisodes() {
     try {
-      const aniRes = await fetchFromAnilist(anilistId);
-      const media = aniRes?.data?.Media;
-      const streamingEpisodes = media?.streamingEpisodes;
-
-      if (Array.isArray(streamingEpisodes) && streamingEpisodes.length > 0) {
-        displayStreamingEpisodes(streamingEpisodes);
-        return;
-      }
-
       const jikanRes = await fetchFromJikan(currentPage);
       const episodes = jikanRes?.data;
       const hasEpisodes = Array.isArray(episodes) && episodes.length > 0;
@@ -208,14 +169,16 @@
         return;
       }
 
-      const total = media?.episodes || 0;
+      const aniRes = await fetchFromAnilist(anilistId);
+      const total = aniRes?.data?.Media?.episodes || 0;
+
       if (total > 0) {
         displayEpisodesAnilist(total);
       } else {
         $('#episodes-results').html('<p>No episodes found.</p>');
       }
     } catch (err) {
-      console.error("Failed to load from all sources", err);
+      console.error("Failed to load episodes", err);
       $('#episodes-results').html('<p>Could not load episodes from any source.</p>');
     }
   }
@@ -224,7 +187,6 @@
     window.location.href = `play.html?type=anime&id=${anilistId}&ep=${ep}`;
   }
 
-  // Init
   loadEpisodes();
 </script>
 
