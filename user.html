@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Account - LetsWatch</title>
+  <style>
+    body {font-family: Arial, sans-serif;background-color: #121212;color: #ffffff;margin: 0;padding: 20px;}
+    h1 {text-align: center;margin-bottom: 30px;}
+    .user-container {background-color: #1e1e1e;border: 1px solid #333;border-radius: 8px;max-width: 400px;margin: 40px auto;padding: 30px 24px 24px 24px;box-shadow: 0 4px 16px #0004;text-align:center;}
+    .info-label {font-weight: bold;color: #ff9900;}
+    .info-value {margin-bottom: 16px;}
+    .btn {background-color: #ff9900;color: #fff;border: none;padding: 12px 0;border-radius: 5px;font-size: 17px;cursor: pointer;margin-top: 18px;width: 100%;}
+    .btn:active {background-color: #cc7a00;}
+    .error {color:#ff5555;margin-top:18px;}
+  </style>
+</head>
+<body>
+  <h1>My Account</h1>
+  <div class="user-container" id="user-box">
+    <div id="user-info">Loading...</div>
+    <button class="btn" onclick="window.location.href='index.html'">Back to Home</button>
+    <button class="btn" style="background:#333;margin-top:8px;" onclick="logout()">Logout</button>
+    <div id="error-msg" class="error"></div>
+  </div>
+  <script>
+    function logout() {
+      localStorage.removeItem('token');
+      window.location.href = "login.html";
+    }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      document.getElementById('user-info').innerHTML = "You are not logged in.<br><a href='login.html' style='color:#ff9900'>Login</a>";
+      document.querySelector('.btn').style.display = 'none';
+      document.getElementById('error-msg').textContent = '';
+    } else {
+      fetch('/api/userinfo', {
+        headers: {Authorization: 'Bearer ' + token}
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.ok) {
+          document.getElementById('user-info').innerHTML = `
+            <div class="info-label">Username:</div>
+            <div class="info-value">${data.username}</div>
+            <div class="info-label">Email:</div>
+            <div class="info-value">${data.email}</div>
+          `;
+        } else {
+          document.getElementById('user-info').innerHTML = "Session expired. Please <a href='login.html' style='color:#ff9900'>login again</a>.";
+          document.getElementById('error-msg').textContent = data.error || '';
+        }
+      })
+      .catch(() => {
+        document.getElementById('user-info').innerHTML = "Could not load user info.";
+        document.getElementById('error-msg').textContent = 'Network error';
+      });
+    }
+  </script>
+</body>
+</html>

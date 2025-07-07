@@ -117,6 +117,14 @@
     <div class="section-title" id="anime-series-title">Anime Series</div>
     <div id="anime-series-results"></div>
     <div class="pagination" id="anime-series-pagination"></div>
+    <div id="account-popup" style="display:none; position:fixed; top:70px; right:30px; background:#1e1e1e; color:#fff; border:1px solid #333; border-radius:8px; box-shadow:0 4px 16px #000a; padding:16px; min-width:220px; z-index:1000;">
+        <div id="account-username" style="margin-bottom:10px;">Loading...</div>
+        <div id="account-email" style="margin-bottom:10px;"></div>
+        <button id="my-account-btn" style="background:#ff9900;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;margin-bottom:6px;">My Account</button>
+        <button id="login-btn" style="background:#ff9900;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;display:none;">Login</button>
+        <button id="logout-btn" style="background:#333;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;margin-left:6px;display:none;">Logout</button>
+    </div>
+    <span id="account-icon" title="Account" style="position:fixed;top:22px;right:32px;font-size:28px;cursor:pointer;z-index:1001;">👤</span>
 
     <script>
         const imageUrl = 'https://image.tmdb.org/t/p/w500';
@@ -308,6 +316,75 @@
                 $('#search-button').click();
             }
         });
+        const accountIcon = document.getElementById('account-icon');
+        const accountPopup = document.getElementById('account-popup');
+        const accountUsername = document.getElementById('account-username');
+        const accountEmail = document.getElementById('account-email');
+        const myAccountBtn = document.getElementById('my-account-btn');
+        const loginBtn = document.getElementById('login-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Show/hide popup
+        accountIcon.onclick = () => {
+            if (accountPopup.style.display === 'block') {
+                accountPopup.style.display = 'none';
+                return;
+            }
+            accountPopup.style.display = 'block';
+            // Position popup under icon
+            accountPopup.style.top = (accountIcon.offsetTop + 36) + 'px';
+            accountPopup.style.right = '30px';
+            // Load user info
+            const token = localStorage.getItem('token');
+            if (token) {
+                fetch('/api/userinfo', {
+                    headers: { Authorization: 'Bearer ' + token }
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.ok) {
+                            accountUsername.textContent = data.username;
+                            accountEmail.textContent = data.email;
+                            myAccountBtn.style.display = '';
+                            loginBtn.style.display = 'none';
+                            logoutBtn.style.display = '';
+                        } else {
+                            accountUsername.textContent = 'Guest User';
+                            accountEmail.textContent = '';
+                            myAccountBtn.style.display = 'none';
+                            loginBtn.style.display = '';
+                            logoutBtn.style.display = 'none';
+                        }
+                    }).catch(() => {
+                    accountUsername.textContent = 'Guest User';
+                    accountEmail.textContent = '';
+                    myAccountBtn.style.display = 'none';
+                    loginBtn.style.display = '';
+                    logoutBtn.style.display = 'none';
+                });
+            } else {
+                accountUsername.textContent = 'Guest User';
+                accountEmail.textContent = '';
+                myAccountBtn.style.display = 'none';
+                loginBtn.style.display = '';
+                logoutBtn.style.display = 'none';
+            }
+        };
+        // Hide popup on click outside
+        document.addEventListener('click', e => {
+            if (e.target !== accountIcon && !accountPopup.contains(e.target)) {
+                accountPopup.style.display = 'none';
+            }
+        });
+        // Button actions
+        myAccountBtn.onclick = () => { window.location.href = 'user.html'; }
+        loginBtn.onclick = () => { window.location.href = 'login.html'; }
+        logoutBtn.onclick = () => {
+            localStorage.removeItem('token');
+            accountPopup.style.display = 'none';
+            // Optionally refresh the page or update UI
+            location.reload();
+        };
     </script>
 </body>
 </html>
