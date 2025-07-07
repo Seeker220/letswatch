@@ -66,6 +66,23 @@
       color: #000;
       border-radius: 5px;
     }
+    .watched-state {
+      display: inline-block;
+      border-radius: 14px;
+      padding: 3px 12px;
+      font-size: 13px;
+      margin: 6px 0 0 0;
+      font-weight: bold;
+      user-select: none;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+    }
+    .watched-not { background: #444; color: #fff; }
+    .watched-watching { background: #ffe066; color: #222; }
+    .watched-watched { background: #26d964; color: #fff; }
   </style>
 </head>
 <body>
@@ -80,6 +97,22 @@
   const malId = urlParams.get('mal');
   let currentPage = 1;
   let totalPages = 1;
+  let lastEpisodes = [];
+  let usingJikan = false;
+
+  function watchedKey(item_type, item_id, episode_number) {
+    return `${item_type}:${item_id}:e${episode_number}`;
+  }
+  function watchedStateClass(state) {
+    if (state === "watching") return "watched-watching";
+    if (state === "watched") return "watched-watched";
+    return "watched-not";
+  }
+  function watchedStateText(state) {
+    if (state === "watching") return "Watching";
+    if (state === "watched") return "Watched";
+    return "Not Watched";
+  }
 
   function fetchFromJikan(page) {
     const url = `https://api.jikan.moe/v4/anime/${malId}/episodes?page=${page}`;
@@ -107,28 +140,38 @@
 
   function displayEpisodesJikan(episodes) {
     $('#episodes-results').html('');
+    lastEpisodes = [];
     episodes.forEach(ep => {
       const title = ep.title || `Episode ${ep.mal_id}`;
       const number = ep.mal_id;
+      lastEpisodes.push({ episode_number: number, title });
       $('#episodes-results').append(`
-        <li class="episode-item" onclick="playAnimeEp(${number})">
+        <li class="episode-item" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">
           <div class="episode-number">Ep ${number}</div>
           <div class="episode-title">${title}</div>
+          <span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">Not Watched</span>
+          <button style="display:none"></button>
         </li>
       `);
     });
+    batchUpdateWatchedAnimeEpisodes();
   }
 
   function displayEpisodesAnilist(total) {
     $('#episodes-results').html('');
+    lastEpisodes = [];
     for (let i = 1; i <= total; i++) {
+      lastEpisodes.push({ episode_number: i, title: `Episode ${i}` });
       $('#episodes-results').append(`
-        <li class="episode-item" onclick="playAnimeEp(${i})">
+        <li class="episode-item" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">
           <div class="episode-number">Ep ${i}</div>
           <div class="episode-title">Episode ${i}</div>
+          <span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">Not Watched</span>
+          <button style="display:none"></button>
         </li>
       `);
     }
+    batchUpdateWatchedAnimeEpisodes();
     $('#pagination').html('');
   }
 
@@ -163,6 +206,7 @@
       const hasEpisodes = Array.isArray(episodes) && episodes.length > 0;
 
       if (hasEpisodes && jikanRes.pagination) {
+        usingJikan = true;
         totalPages = jikanRes.pagination.last_visible_page || 1;
         displayEpisodesJikan(episodes);
         updatePagination();
@@ -173,6 +217,7 @@
       const total = aniRes?.data?.Media?.episodes || 0;
 
       if (total > 0) {
+        usingJikan = false;
         displayEpisodesAnilist(total);
       } else {
         $('#episodes-results').html('<p>No episodes found.</p>');
@@ -186,6 +231,70 @@
   function playAnimeEp(ep) {
     window.location.href = `play.html?type=anime&id=${anilistId}&ep=${ep}`;
   }
+
+  // Batch fetch watched state for anime episodes
+  function batchUpdateWatchedAnimeEpisodes() {
+    if (!lastEpisodes.length) return;
+    const items = lastEpisodes.map(ep => ({
+      item_type: "anime-episode",
+      item_id: anilistId,
+      episode_number: ep.episode_number
+    }));
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/watched?items=' + encodeURIComponent(JSON.stringify(items)), {
+      headers: { Authorization: 'Bearer ' + token }
+    })
+            .then(res => res.json())
+            .then(data => {
+              if (!data.states) return;
+              items.forEach(item => {
+                const key = watchedKey(item.item_type, item.item_id, item.episode_number);
+                const state = data.states[key] || "not_watched";
+                const $el = $('.watched-state[data-type="anime-episode"][data-id="' + item.item_id + '"][data-episode="' + item.episode_number + '"]');
+                $el.removeClass("watched-not watched-watching watched-watched")
+                        .addClass(watchedStateClass(state))
+                        .text(watchedStateText(state));
+              });
+            });
+  }
+
+  // Watched state cycling on click
+  $(document).on('click', '.watched-state', function (e) {
+    e.stopPropagation();
+    if (!localStorage.getItem('token')) {
+      alert('Login to track progress!');
+      return;
+    }
+    const $el = $(this);
+    const item_type = $el.data('type');
+    const item_id = $el.data('id');
+    const episode_number = $el.data('episode');
+    let state;
+    if ($el.hasClass('watched-not')) state = 'watching';
+    else if ($el.hasClass('watched-watching')) state = 'watched';
+    else state = 'not_watched';
+
+    $el.removeClass('watched-not watched-watching watched-watched');
+    $el.addClass(watchedStateClass(state)).text(watchedStateText(state));
+
+    fetch('/api/watched', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + localStorage.getItem('token'),
+      },
+      body: JSON.stringify({ item_type, item_id, episode_number, state }),
+    });
+  });
+
+  // Also handle click for playing episode (keep original logic)
+  $(document).on('click', '.episode-item', function(e) {
+    // Don't trigger if click was on the watched state
+    if ($(e.target).hasClass('watched-state')) return;
+    const ep = $(this).data('episode');
+    playAnimeEp(ep);
+  });
 
   loadEpisodes();
 </script>

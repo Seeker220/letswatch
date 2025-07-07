@@ -92,299 +92,417 @@
             border-radius: 5px;
             padding: 5px 10px;
         }
+        .watched-state {
+            display: inline-block;
+            border-radius: 14px;
+            padding: 3px 12px;
+            font-size: 13px;
+            margin: 6px 0 0 0;
+            font-weight: bold;
+            user-select: none;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+        }
+        .watched-not { background: #444; color: #fff; }
+        .watched-watching { background: #ffe066; color: #222; }
+        .watched-watched { background: #26d964; color: #fff; }
     </style>
 </head>
 <body>
 
-    <h1>Search Movies & TV</h1>
-    <div style="text-align: center;">
-        <input type="text" id="search-input" placeholder="Enter movie, TV show or anime title" />
-        <button id="search-button">Search</button>
-    </div>
+<h1>Search Movies & TV</h1>
+<div style="text-align: center;">
+    <input type="text" id="search-input" placeholder="Enter movie, TV show or anime title" />
+    <button id="search-button">Search</button>
+</div>
 
-    <div class="section-title" id="movies-title">Movies</div>
-    <div id="movies-results"></div>
-    <div class="pagination" id="movies-pagination"></div>
+<div class="section-title" id="movies-title">Movies</div>
+<div id="movies-results"></div>
+<div class="pagination" id="movies-pagination"></div>
 
-    <div class="section-title" id="series-title">TV Series</div>
-    <div id="series-results"></div>
-    <div class="pagination" id="series-pagination"></div>
+<div class="section-title" id="series-title">TV Series</div>
+<div id="series-results"></div>
+<div class="pagination" id="series-pagination"></div>
 
-    <div class="section-title" id="anime-movies-title">Anime Movies</div>
-    <div id="anime-movies-results"></div>
-    <div class="pagination" id="anime-movies-pagination"></div>
+<div class="section-title" id="anime-movies-title">Anime Movies</div>
+<div id="anime-movies-results"></div>
+<div class="pagination" id="anime-movies-pagination"></div>
 
-    <div class="section-title" id="anime-series-title">Anime Series</div>
-    <div id="anime-series-results"></div>
-    <div class="pagination" id="anime-series-pagination"></div>
-    <div id="account-popup" style="display:none; position:fixed; top:70px; right:30px; background:#1e1e1e; color:#fff; border:1px solid #333; border-radius:8px; box-shadow:0 4px 16px #000a; padding:16px; min-width:220px; z-index:1000;">
-        <div id="account-username" style="margin-bottom:10px;">Loading...</div>
-        <div id="account-email" style="margin-bottom:10px;"></div>
-        <button id="my-account-btn" style="background:#ff9900;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;margin-bottom:6px;">My Account</button>
-        <button id="login-btn" style="background:#ff9900;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;display:none;">Login</button>
-        <button id="logout-btn" style="background:#333;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;margin-left:6px;display:none;">Logout</button>
-    </div>
-    <span id="account-icon" title="Account" style="position:fixed;top:22px;right:32px;font-size:28px;cursor:pointer;z-index:1001;">👤</span>
+<div class="section-title" id="anime-series-title">Anime Series</div>
+<div id="anime-series-results"></div>
+<div class="pagination" id="anime-series-pagination"></div>
+<div id="account-popup" style="display:none; position:fixed; top:70px; right:30px; background:#1e1e1e; color:#fff; border:1px solid #333; border-radius:8px; box-shadow:0 4px 16px #000a; padding:16px; z-index:1002;">
+    <div id="account-username" style="margin-bottom:10px;">Loading...</div>
+    <div id="account-email" style="margin-bottom:10px;"></div>
+    <button id="my-account-btn" style="background:#ff9900;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;margin-bottom:6px;">My Account</button>
+    <button id="login-btn" style="background:#ff9900;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;display:none;">Login</button>
+    <button id="logout-btn" style="background:#333;color:#fff;border:none;padding:8px 16px;border-radius:5px;cursor:pointer;margin-left:6px;display:none;">Logout</button>
+</div>
+<span id="account-icon" title="Account" style="position:fixed;top:22px;right:32px;font-size:28px;cursor:pointer;z-index:1001;">👤</span>
 
-    <script>
-        const imageUrl = 'https://image.tmdb.org/t/p/w500';
-        let currentPageMovies = 1;
-        let currentPageSeries = 1;
-        let animeMoviesPage = 1;
-        let animeSeriesPage = 1;
-        let totalPagesMovies = 1;
-        let totalPagesSeries = 1;
-        let totalPagesAnimeMovies = 1;
-        let totalPagesAnimeSeries = 1;
-        const pageGroupSize = 10;
+<script>
+    const imageUrl = 'https://image.tmdb.org/t/p/w500';
+    let currentPageMovies = 1;
+    let currentPageSeries = 1;
+    let animeMoviesPage = 1;
+    let animeSeriesPage = 1;
+    let totalPagesMovies = 1;
+    let totalPagesSeries = 1;
+    let totalPagesAnimeMovies = 1;
+    let totalPagesAnimeSeries = 1;
+    const pageGroupSize = 10;
 
-        function searchMovies(query) {
-            $.get(`/api/searchMovies?q=${encodeURIComponent(query)}&page=${currentPageMovies}`, function(data) {
-                totalPagesMovies = data.total_pages;
-                if (data.results.length > 0) {
-                    displayResults(data.results, 'movies');
-                    $('#movies-title').show();
-                    updatePagination('movies');
-                } else {
-                    $('#movies-results').html('<p>No movies found</p>');
-                }
-            });
+    // --- Watched state helpers ---
+    function watchedKey(item_type, item_id) {
+        return `${item_type}:${item_id}`;
+    }
+    function watchedStateClass(state) {
+        if (state === "watching") return "watched-watching";
+        if (state === "watched") return "watched-watched";
+        return "watched-not";
+    }
+    function watchedStateText(state) {
+        if (state === "watching") return "Watching";
+        if (state === "watched") return "Watched";
+        return "Not Watched";
+    }
+    // To be filled after each search result render
+    let lastMovieResults = [];
+    let lastSeriesResults = [];
+    let lastAnimeMovies = [];
+    let lastAnimeSeries = [];
 
-            $.get(`/api/searchSeries?q=${encodeURIComponent(query)}&page=${currentPageSeries}`, function(data) {
-                totalPagesSeries = data.total_pages;
-                if (data.results.length > 0) {
-                    displayResults(data.results, 'series');
-                    $('#series-title').show();
-                    updatePagination('series');
-                } else {
-                    $('#series-results').html('<p>No series found</p>');
-                }
-            });
+    function searchMovies(query) {
+        $.get(`/api/searchMovies?q=${encodeURIComponent(query)}&page=${currentPageMovies}`, function(data) {
+            totalPagesMovies = data.total_pages;
+            if (data.results.length > 0) {
+                lastMovieResults = data.results;
+                displayResults(data.results, 'movies');
+                $('#movies-title').show();
+                updatePagination('movies');
+            } else {
+                $('#movies-results').html('<p>No movies found</p>');
+                lastMovieResults = [];
+            }
+        });
 
-            searchAnime(query);
-        }
+        $.get(`/api/searchSeries?q=${encodeURIComponent(query)}&page=${currentPageSeries}`, function(data) {
+            totalPagesSeries = data.total_pages;
+            if (data.results.length > 0) {
+                lastSeriesResults = data.results;
+                displayResults(data.results, 'series');
+                $('#series-title').show();
+                updatePagination('series');
+            } else {
+                $('#series-results').html('<p>No series found</p>');
+                lastSeriesResults = [];
+            }
+        });
 
-        function searchAnime(query) {
-            $.get(`/api/searchAnime?q=${encodeURIComponent(query)}&moviesPage=${animeMoviesPage}&seriesPage=${animeSeriesPage}`, function(res) {
-                $('#anime-movies-results').html('');
-                $('#anime-series-results').html('');
+        searchAnime(query);
+    }
 
-                totalPagesAnimeMovies = res.totalPages.movies;
-                totalPagesAnimeSeries = res.totalPages.series;
+    function searchAnime(query) {
+        $.get(`/api/searchAnime?q=${encodeURIComponent(query)}&moviesPage=${animeMoviesPage}&seriesPage=${animeSeriesPage}`, function(res) {
+            $('#anime-movies-results').html('');
+            $('#anime-series-results').html('');
 
-                if (res.animeMovies.length) {
-                    res.animeMovies.forEach(anime => {
-                        const title = anime.title.english || anime.title.romaji;
-                        const year = anime.seasonYear || 'N/A';
-                        const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
-                        $('#anime-movies-results').append(`
-                            <div class="movie-item">
+            totalPagesAnimeMovies = res.totalPages.movies;
+            totalPagesAnimeSeries = res.totalPages.series;
+
+            if (res.animeMovies.length) {
+                lastAnimeMovies = res.animeMovies;
+                res.animeMovies.forEach(anime => {
+                    const title = anime.title.english || anime.title.romaji;
+                    const year = anime.seasonYear || 'N/A';
+                    const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                    $('#anime-movies-results').append(`
+                            <div class="movie-item" data-type="anime" data-id="${anime.id}">
                                 <img src="${poster}" class="movie-poster">
                                 <div class="movie-title">${title} (${year})</div>
+                                <span class="watched-state watched-not" data-type="anime" data-id="${anime.id}">Not Watched</span>
                                 <button class="play-button" onclick="playAnimeMovie(${anime.id})">Play</button>
                             </div>
                         `);
-                    });
-                    $('#anime-movies-title').show();
-                    updatePagination('anime-movies');
-                }
+                });
+                $('#anime-movies-title').show();
+                updatePagination('anime-movies');
+            } else {
+                lastAnimeMovies = [];
+            }
 
-                if (res.animeSeries.length) {
-                    res.animeSeries.forEach(anime => {
-                        const title = anime.title.english || anime.title.romaji;
-                        const year = anime.seasonYear || 'N/A';
-                        const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
-                        $('#anime-series-results').append(`
-                            <div class="movie-item">
+            if (res.animeSeries.length) {
+                lastAnimeSeries = res.animeSeries;
+                res.animeSeries.forEach(anime => {
+                    const title = anime.title.english || anime.title.romaji;
+                    const year = anime.seasonYear || 'N/A';
+                    const poster = anime.coverImage?.large || 'https://via.placeholder.com/200x300?text=No+Image';
+                    $('#anime-series-results').append(`
+                            <div class="movie-item" data-type="anime" data-id="${anime.id}">
                                 <img src="${poster}" class="movie-poster">
                                 <div class="movie-title">${title} (${year})</div>
+                                <span class="watched-state watched-not" data-type="anime" data-id="${anime.id}">Not Watched</span>
                                 <button class="play-button" onclick="window.location.href='animeepisodes.html?id=${anime.id}&mal=${anime.idMal}'">View Episodes</button>
                             </div>
                         `);
-                    });
-                    $('#anime-series-title').show();
-                    updatePagination('anime-series');
-                }
-            });
-        }
+                });
+                $('#anime-series-title').show();
+                updatePagination('anime-series');
+            } else {
+                lastAnimeSeries = [];
+            }
+            batchUpdateWatched("anime");
+        });
+    }
 
-        function displayResults(results, category) {
-            const container = category === 'movies' ? '#movies-results' : '#series-results';
-            $(container).html('');
+    function displayResults(results, category) {
+        const container = category === 'movies' ? '#movies-results' : '#series-results';
+        $(container).html('');
 
-            results.forEach(result => {
-                const id = result.id;
-                const title = category === 'movies' ? result.title : result.name;
-                const year = (category === 'movies' ? result.release_date : result.first_air_date || 'N/A').split('-')[0];
-                const poster = result.poster_path ? `${imageUrl}${result.poster_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
+        results.forEach(result => {
+            const id = result.id;
+            const title = category === 'movies' ? result.title : result.name;
+            const year = (category === 'movies' ? result.release_date : result.first_air_date || 'N/A').split('-')[0];
+            const poster = result.poster_path ? `${imageUrl}${result.poster_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
+            const item_type = category === 'movies' ? 'tmdb-movie' : 'tmdb-tv';
 
-                $(container).append(`
-                    <div class="movie-item">
+            $(container).append(`
+                    <div class="movie-item" data-type="${item_type}" data-id="${id}">
                         <img src="${poster}" class="movie-poster">
                         <div class="movie-title">${title} (${year})</div>
-                        ${category === 'movies' 
-                            ? `<button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>` 
-                            : `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>`}
+                        <span class="watched-state watched-not" data-type="${item_type}" data-id="${id}">Not Watched</span>
+                        ${category === 'movies'
+                ? `<button class="play-button" onclick="playItem('${id}', '${category}')">Play</button>`
+                : `<button class="play-button" onclick="viewSeasons('${id}')">View Seasons</button>`}
                     </div>
                 `);
-            });
+        });
+
+        batchUpdateWatched(category);
+    }
+
+    function updatePagination(category) {
+        let currentPage, totalPages, container;
+
+        if (category === 'movies') {
+            currentPage = currentPageMovies;
+            totalPages = totalPagesMovies;
+            container = '#movies-pagination';
+        } else if (category === 'series') {
+            currentPage = currentPageSeries;
+            totalPages = totalPagesSeries;
+            container = '#series-pagination';
+        } else if (category === 'anime-movies') {
+            currentPage = animeMoviesPage;
+            totalPages = totalPagesAnimeMovies;
+            container = '#anime-movies-pagination';
+        } else if (category === 'anime-series') {
+            currentPage = animeSeriesPage;
+            totalPages = totalPagesAnimeSeries;
+            container = '#anime-series-pagination';
         }
 
-        function updatePagination(category) {
-            let currentPage, totalPages, container;
+        let start = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
+        let end = Math.min(start + pageGroupSize - 1, totalPages);
+        let html = '';
 
-            if (category === 'movies') {
-                currentPage = currentPageMovies;
-                totalPages = totalPagesMovies;
-                container = '#movies-pagination';
-            } else if (category === 'series') {
-                currentPage = currentPageSeries;
-                totalPages = totalPagesSeries;
-                container = '#series-pagination';
-            } else if (category === 'anime-movies') {
-                currentPage = animeMoviesPage;
-                totalPages = totalPagesAnimeMovies;
-                container = '#anime-movies-pagination';
-            } else if (category === 'anime-series') {
-                currentPage = animeSeriesPage;
-                totalPages = totalPagesAnimeSeries;
-                container = '#anime-series-pagination';
-            }
-
-            let start = Math.floor((currentPage - 1) / pageGroupSize) * pageGroupSize + 1;
-            let end = Math.min(start + pageGroupSize - 1, totalPages);
-            let html = '';
-
-            if (start > 1) html += `<button onclick="changePage('${category}', ${start - 1})">&lt;</button>`;
-            for (let i = start; i <= end; i++) {
-                html += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage('${category}', ${i})">${i}</button>`;
-            }
-            if (end < totalPages) html += `<button onclick="changePage('${category}', ${end + 1})">&gt;</button>`;
-
-            $(container).html(html);
+        if (start > 1) html += `<button onclick="changePage('${category}', ${start - 1})">&lt;</button>`;
+        for (let i = start; i <= end; i++) {
+            html += `<button class="${i === currentPage ? 'active' : ''}" onclick="changePage('${category}', ${i})">${i}</button>`;
         }
+        if (end < totalPages) html += `<button onclick="changePage('${category}', ${end + 1})">&gt;</button>`;
 
-        function changePage(category, page) {
-            if (category === 'movies') currentPageMovies = page;
-            else if (category === 'series') currentPageSeries = page;
-            else if (category === 'anime-movies') animeMoviesPage = page;
-            else if (category === 'anime-series') animeSeriesPage = page;
+        $(container).html(html);
+    }
 
-            const query = $('#search-input').val();
-            if (query) {
-                if (['movies', 'series'].includes(category)) {
-                    searchMovies(query);
-                } else {
-                    searchAnime(query);
-                }
-            }
-        }
+    function changePage(category, page) {
+        if (category === 'movies') currentPageMovies = page;
+        else if (category === 'series') currentPageSeries = page;
+        else if (category === 'anime-movies') animeMoviesPage = page;
+        else if (category === 'anime-series') animeSeriesPage = page;
 
-		function playItem(id, category) {
-			if (category === 'movies') {
-				window.location.href = `play.html?type=tmdb-movie&id=${id}`;
-			}
-		}
-
-		function playAnimeMovie(id) {
-			window.location.href = `play.html?type=anime&id=${id}&ep=1`;
-		}
-
-
-        function viewSeasons(id) {
-            window.location.href = `seasons.html?id=${id}`;
-        }
-
-		function viewAnimeEpisodes(id) {
-			window.location.href = `animeepisodes.html?id=${id}`;
-		}
-
-
-        $('#search-button').on('click', function () {
-            const query = $('#search-input').val();
-            if (query) {
-                currentPageMovies = 1;
-                currentPageSeries = 1;
-                animeMoviesPage = 1;
-                animeSeriesPage = 1;
+        const query = $('#search-input').val();
+        if (query) {
+            if (['movies', 'series'].includes(category)) {
                 searchMovies(query);
-            }
-        });
-
-        $('#search-input').on('keydown', function (event) {
-            if (event.key === 'Enter') {
-                $('#search-button').click();
-            }
-        });
-        const accountIcon = document.getElementById('account-icon');
-        const accountPopup = document.getElementById('account-popup');
-        const accountUsername = document.getElementById('account-username');
-        const accountEmail = document.getElementById('account-email');
-        const myAccountBtn = document.getElementById('my-account-btn');
-        const loginBtn = document.getElementById('login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-
-        // Show/hide popup
-        accountIcon.onclick = () => {
-            if (accountPopup.style.display === 'block') {
-                accountPopup.style.display = 'none';
-                return;
-            }
-            accountPopup.style.display = 'block';
-            // Position popup under icon
-            accountPopup.style.top = (accountIcon.offsetTop + 36) + 'px';
-            accountPopup.style.right = '30px';
-            // Load user info
-            const token = localStorage.getItem('token');
-            if (token) {
-                fetch('/api/userinfo', {
-                    headers: { Authorization: 'Bearer ' + token }
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        if (data.ok) {
-                            accountUsername.textContent = data.username;
-                            accountEmail.textContent = data.email;
-                            myAccountBtn.style.display = '';
-                            loginBtn.style.display = 'none';
-                            logoutBtn.style.display = '';
-                        } else {
-                            accountUsername.textContent = 'Guest User';
-                            accountEmail.textContent = '';
-                            myAccountBtn.style.display = 'none';
-                            loginBtn.style.display = '';
-                            logoutBtn.style.display = 'none';
-                        }
-                    }).catch(() => {
-                    accountUsername.textContent = 'Guest User';
-                    accountEmail.textContent = '';
-                    myAccountBtn.style.display = 'none';
-                    loginBtn.style.display = '';
-                    logoutBtn.style.display = 'none';
-                });
             } else {
+                searchAnime(query);
+            }
+        }
+    }
+
+    function playItem(id, category) {
+        if (category === 'movies') {
+            window.location.href = `play.html?type=tmdb-movie&id=${id}`;
+        }
+    }
+
+    function playAnimeMovie(id) {
+        window.location.href = `play.html?type=anime&id=${id}&ep=1`;
+    }
+
+    function viewSeasons(id) {
+        window.location.href = `seasons.html?id=${id}`;
+    }
+
+    function viewAnimeEpisodes(id) {
+        window.location.href = `animeepisodes.html?id=${id}`;
+    }
+
+    // --- Watched state batching ---
+    function batchUpdateWatched(category) {
+        // Gather all visible items for the batch
+        let items = [];
+        if (category === "movies") {
+            if (!lastMovieResults.length) return;
+            items = lastMovieResults.map(m => ({ item_type: "tmdb-movie", item_id: m.id }));
+        } else if (category === "series") {
+            if (!lastSeriesResults.length) return;
+            items = lastSeriesResults.map(s => ({ item_type: "tmdb-tv", item_id: s.id }));
+        } else if (category === "anime") {
+            // Both anime movies and anime series
+            items = [
+                ...(lastAnimeMovies || []).map(a => ({ item_type: "anime", item_id: a.id })),
+                ...(lastAnimeSeries || []).map(a => ({ item_type: "anime", item_id: a.id }))
+            ];
+        }
+        if (!items.length) return;
+        const token = localStorage.getItem('token');
+        if (!token) return; // Not logged in, leave as default "Not Watched"
+        fetch('/api/watched?items=' + encodeURIComponent(JSON.stringify(items)), {
+            headers: { Authorization: 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.states) return;
+                // Update the watched-state boxes for the current category
+                items.forEach(item => {
+                    const key = watchedKey(item.item_type, item.item_id);
+                    const state = data.states[key] || "not_watched";
+                    const $el = $('.watched-state[data-type="' + item.item_type + '"][data-id="' + item.item_id + '"]');
+                    $el.removeClass("watched-not watched-watching watched-watched")
+                        .addClass(watchedStateClass(state))
+                        .text(watchedStateText(state));
+                });
+            });
+    }
+
+    // --- Watched state cycling on click ---
+    $(document).on('click', '.watched-state', function (e) {
+        e.preventDefault();
+        if (!localStorage.getItem('token')) {
+            alert('Login to track progress!');
+            return;
+        }
+        const $el = $(this);
+        const item_type = $el.data('type');
+        const item_id = $el.data('id');
+        let state;
+        if ($el.hasClass('watched-not')) state = 'watching';
+        else if ($el.hasClass('watched-watching')) state = 'watched';
+        else state = 'not_watched';
+
+        // Update UI immediately
+        $el.removeClass('watched-not watched-watching watched-watched');
+        $el.addClass(watchedStateClass(state)).text(watchedStateText(state));
+
+        // Post to API
+        fetch('/api/watched', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+            },
+            body: JSON.stringify({ item_type, item_id, state }),
+        });
+    });
+
+    // --- Account/UI logic (unchanged) ---
+    $('#search-button').on('click', function () {
+        const query = $('#search-input').val();
+        if (query) {
+            currentPageMovies = 1;
+            currentPageSeries = 1;
+            animeMoviesPage = 1;
+            animeSeriesPage = 1;
+            searchMovies(query);
+        }
+    });
+
+    $('#search-input').on('keydown', function (event) {
+        if (event.key === 'Enter') {
+            $('#search-button').click();
+        }
+    });
+    const accountIcon = document.getElementById('account-icon');
+    const accountPopup = document.getElementById('account-popup');
+    const accountUsername = document.getElementById('account-username');
+    const accountEmail = document.getElementById('account-email');
+    const myAccountBtn = document.getElementById('my-account-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    // Show/hide popup
+    accountIcon.onclick = () => {
+        if (accountPopup.style.display === 'block') {
+            accountPopup.style.display = 'none';
+            return;
+        }
+        accountPopup.style.display = 'block';
+        // Position popup under icon
+        accountPopup.style.top = (accountIcon.offsetTop + 36) + 'px';
+        accountPopup.style.right = '30px';
+        // Load user info
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetch('/api/userinfo', {
+                headers: { Authorization: 'Bearer ' + token }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.ok) {
+                        accountUsername.textContent = data.username;
+                        accountEmail.textContent = data.email;
+                        myAccountBtn.style.display = '';
+                        loginBtn.style.display = 'none';
+                        logoutBtn.style.display = '';
+                    } else {
+                        accountUsername.textContent = 'Guest User';
+                        accountEmail.textContent = '';
+                        myAccountBtn.style.display = 'none';
+                        loginBtn.style.display = '';
+                        logoutBtn.style.display = 'none';
+                    }
+                }).catch(() => {
                 accountUsername.textContent = 'Guest User';
                 accountEmail.textContent = '';
                 myAccountBtn.style.display = 'none';
                 loginBtn.style.display = '';
                 logoutBtn.style.display = 'none';
-            }
-        };
-        // Hide popup on click outside
-        document.addEventListener('click', e => {
-            if (e.target !== accountIcon && !accountPopup.contains(e.target)) {
-                accountPopup.style.display = 'none';
-            }
-        });
-        // Button actions
-        myAccountBtn.onclick = () => { window.location.href = 'user.html'; }
-        loginBtn.onclick = () => { window.location.href = 'login.html'; }
-        logoutBtn.onclick = () => {
-            localStorage.removeItem('token');
+            });
+        } else {
+            accountUsername.textContent = 'Guest User';
+            accountEmail.textContent = '';
+            myAccountBtn.style.display = 'none';
+            loginBtn.style.display = '';
+            logoutBtn.style.display = 'none';
+        }
+    };
+    // Hide popup on click outside
+    document.addEventListener('click', e => {
+        if (e.target !== accountIcon && !accountPopup.contains(e.target)) {
             accountPopup.style.display = 'none';
-            // Optionally refresh the page or update UI
-            location.reload();
-        };
-    </script>
+        }
+    });
+    // Button actions
+    myAccountBtn.onclick = () => { window.location.href = 'user.html'; }
+    loginBtn.onclick = () => { window.location.href = 'login.html'; }
+    logoutBtn.onclick = () => {
+        localStorage.removeItem('token');
+        accountPopup.style.display = 'none';
+        // Optionally refresh the page or update UI
+        location.reload();
+    };
+</script>
 </body>
 </html>

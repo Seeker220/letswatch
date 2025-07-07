@@ -47,8 +47,8 @@
         }
         .episode-number {
             font-size: 14px;
-            color: #ff9900; /* Color for the episode number */
-            margin-bottom: 5px; /* Space between number and title */
+            color: #ff9900;
+            margin-bottom: 5px;
         }
         .episode-poster {
             width: 100%;
@@ -69,68 +69,155 @@
             left: 0;
             border-radius: 5px;
         }
+        .watched-state {
+            display: inline-block;
+            border-radius: 14px;
+            padding: 3px 12px;
+            font-size: 13px;
+            margin: 6px 0 0 0;
+            font-weight: bold;
+            user-select: none;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s;
+            position: absolute;
+            top: 12px;
+            right: 10px;
+        }
+        .watched-not { background: #444; color: #fff; }
+        .watched-watching { background: #ffe066; color: #222; }
+        .watched-watched { background: #26d964; color: #fff; }
     </style>
 </head>
 <body>
 
-    <h1>Episodes for Season</h1>
-    <ul id="episodes-results"></ul>
+<h1>Episodes for Season</h1>
+<ul id="episodes-results"></ul>
 
-    <script>
-        const apiKey = '250ff9ec7e817d6a95d10b822de9e227'; // Your TMDB API key
-        const urlParams = new URLSearchParams(window.location.search);
-        const seasonNumber = urlParams.get('season');
-        const tmdbId = urlParams.get('id'); // Now using TMDB ID directly
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const seasonNumber = urlParams.get('season');
+    const tmdbId = urlParams.get('id');
 
-        // Function to fetch episodes for a given season and TMDB ID
-        function fetchEpisodes(seasonNumber, tmdbId) {
-            const url = `/api/fetchEpisodes?id=${tmdbId}&season=${seasonNumber}`; // Use server-side fetching
+    // Watched state helpers
+    function watchedKey(item_type, item_id, season_number, episode_number) {
+        return `${item_type}:${item_id}:s${season_number}:e${episode_number}`;
+    }
+    function watchedStateClass(state) {
+        if (state === "watching") return "watched-watching";
+        if (state === "watched") return "watched-watched";
+        return "watched-not";
+    }
+    function watchedStateText(state) {
+        if (state === "watching") return "Watching";
+        if (state === "watched") return "Watched";
+        return "Not Watched";
+    }
 
-            $.get(url, function(data) {
-                if (data && data.episodes) {
-                    displayEpisodes(data.episodes);
-                } else {
-                    $('#episodes-results').html('<p>No episodes found.</p>');
-                }
-            }).fail(function() {
-                $('#episodes-results').html('<p>Error fetching episodes.</p>');
-            });
-        }
+    let lastEpisodes = [];
 
-        // Function to display the episodes
-        function displayEpisodes(episodes) {
-            $('#episodes-results').html(''); // Clear previous results
+    // Fetch episodes for a given season and TMDB ID
+    function fetchEpisodes(seasonNumber, tmdbId) {
+        const url = `/api/fetchEpisodes?id=${tmdbId}&season=${seasonNumber}`;
+        $.get(url, function(data) {
+            if (data && data.episodes) {
+                lastEpisodes = data.episodes;
+                displayEpisodes(data.episodes);
+            } else {
+                $('#episodes-results').html('<p>No episodes found.</p>');
+                lastEpisodes = [];
+            }
+        }).fail(function() {
+            $('#episodes-results').html('<p>Error fetching episodes.</p>');
+            lastEpisodes = [];
+        });
+    }
 
-            episodes.forEach(episode => {
-                const posterUrl = episode.still_path ? `https://image.tmdb.org/t/p/w200${episode.still_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
-                
-                // Get the episode number
-                const episodeNumber = episode.episode_number;
-
-                const episodeHtml = `
-                    <li class="episode-item">
+    // Display episodes
+    function displayEpisodes(episodes) {
+        $('#episodes-results').html('');
+        episodes.forEach(episode => {
+            const posterUrl = episode.still_path ? `https://image.tmdb.org/t/p/w200${episode.still_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
+            const episodeNumber = episode.episode_number;
+            const episodeHtml = `
+                    <li class="episode-item" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">
                         <img src="${posterUrl}" alt="${episode.name} poster" class="episode-poster">
-                        <div class="episode-number">Ep - ${episodeNumber}</div> <!-- Episode number -->
+                        <div class="episode-number">Ep - ${episodeNumber}</div>
                         <div class="episode-title">${episode.name}</div>
+                        <span class="watched-state watched-not" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">Not Watched</span>
                         <button class="play-button" onclick="playEpisode(${seasonNumber}, ${episode.episode_number})">Play</button>
                     </li>
                 `;
-                $('#episodes-results').append(episodeHtml);
+            $('#episodes-results').append(episodeHtml);
+        });
+        batchUpdateWatchedEpisodes();
+    }
+
+    function playEpisode(season, episode) {
+        const playUrl = `play.html?type=tmdb-tv&id=${tmdbId}&season=${season}&episode=${episode}`;
+        window.location.href = playUrl;
+    }
+
+    // Batch fetch watched state for episodes
+    function batchUpdateWatchedEpisodes() {
+        if (!lastEpisodes.length) return;
+        const items = lastEpisodes.map(ep => ({
+            item_type: "tmdb-tv-episode",
+            item_id: tmdbId,
+            season_number: Number(seasonNumber),
+            episode_number: ep.episode_number
+        }));
+        const token = localStorage.getItem('token');
+        if (!token) return;
+        fetch('/api/watched?items=' + encodeURIComponent(JSON.stringify(items)), {
+            headers: { Authorization: 'Bearer ' + token }
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.states) return;
+                items.forEach(item => {
+                    const key = watchedKey(item.item_type, item.item_id, item.season_number, item.episode_number);
+                    const state = data.states[key] || "not_watched";
+                    const $el = $('.watched-state[data-type="tmdb-tv-episode"][data-id="' + item.item_id + '"][data-season="' + item.season_number + '"][data-episode="' + item.episode_number + '"]');
+                    $el.removeClass("watched-not watched-watching watched-watched")
+                        .addClass(watchedStateClass(state))
+                        .text(watchedStateText(state));
+                });
             });
+    }
+
+    // Handle watched state click
+    $(document).on('click', '.watched-state', function (e) {
+        e.stopPropagation();
+        if (!localStorage.getItem('token')) {
+            alert('Login to track progress!');
+            return;
         }
+        const $el = $(this);
+        const item_type = $el.data('type');
+        const item_id = $el.data('id');
+        const season_number = $el.data('season');
+        const episode_number = $el.data('episode');
+        let state;
+        if ($el.hasClass('watched-not')) state = 'watching';
+        else if ($el.hasClass('watched-watching')) state = 'watched';
+        else state = 'not_watched';
 
-		function playEpisode(season, episode) {
-			const playUrl = `play.html?type=tmdb-tv&id=${tmdbId}&season=${season}&episode=${episode}`;
-			window.location.href = playUrl;
-		}
+        $el.removeClass('watched-not watched-watching watched-watched');
+        $el.addClass(watchedStateClass(state)).text(watchedStateText(state));
 
+        fetch('/api/watched', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + localStorage.getItem('token'),
+            },
+            body: JSON.stringify({ item_type, item_id, season_number, episode_number, state }),
+        });
+    });
 
-        // Fetch episodes on page load using the TMDB ID directly
-        fetchEpisodes(seasonNumber, tmdbId);
-    </script>
-	<!-- Your existing HTML content -->
-
-	<!-- Include Common JavaScript File -->
-	<script src="/main.js"></script>
+    // Fetch episodes on page load using the TMDB ID directly
+    fetchEpisodes(seasonNumber, tmdbId);
+</script>
+<script src="/main.js"></script>
 </body>
 </html>
