@@ -63,7 +63,7 @@ export default async function handler(req, res) {
       // Movies (most recent 5 watching)
       const moviesRows = (
           await pool.query(
-              `SELECT *
+              `SELECT item_id
                FROM (
                       SELECT DISTINCT ON (item_id) *
                       FROM watched
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
       // Series (most recent 5 watching)
       const seriesRows = (
           await pool.query(
-              `SELECT *
+              `SELECT item_id
                FROM (
                       SELECT DISTINCT ON (item_id) *
                       FROM watched
@@ -101,7 +101,7 @@ export default async function handler(req, res) {
       // Anime Movies (most recent 5 watching)
       const animeMoviesRows = (
           await pool.query(
-              `SELECT *
+              `SELECT item_id
                FROM (
                       SELECT DISTINCT ON (item_id) *
                       FROM watched
@@ -120,7 +120,7 @@ export default async function handler(req, res) {
       // Anime Series (most recent 5 watching)
       const animeSeriesRows = (
           await pool.query(
-              `SELECT *
+              `SELECT item_id
                FROM (
                       SELECT DISTINCT ON (item_id) *
                       FROM watched
@@ -143,13 +143,19 @@ export default async function handler(req, res) {
             return { ...row, ...details };
           })
       );
-
+      // Fetch additional details for anime movies (including mal_id)
+      const animeMoviesWithDetails = await Promise.all(
+          animeMoviesRows.map(async (row) => {
+            const details = await fetchFromAniList(row.item_id);
+            return { ...row, ...details };
+          })
+      );
       // Return the top 5 of each combined set
       res.json({
         ok: true,
         movies: moviesRows,
         series: seriesRows,
-        animeMovies: animeMoviesRows.slice(0, 5),
+        animeMovies: animeMoviesWithDetails.slice(0, 5),
         animeSeries: animeSeriesWithDetails.slice(0, 5),
       });
     } catch (e) {
