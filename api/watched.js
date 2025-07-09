@@ -48,6 +48,28 @@ async function fetchFromAniList(itemId) {
     seasonYear: media.seasonYear,
   };
 }
+// Fetch details from TMDB
+async function fetchFromTMDB(itemId, type) {
+  const endpoint =
+      type === 'tmdb-movie'
+          ? `https://api.themoviedb.org/3/movie/${itemId}`
+          : `https://api.themoviedb.org/3/tv/${itemId}`;
+
+  const response = await axios.get(endpoint, {
+    params: {
+      api_key: process.env.TMDB_API_KEY
+    }
+  });
+
+  const data = response.data;
+
+  return {
+    id: data.id,
+    title: data.title || data.name,
+    poster_path: data.poster_path,
+    release_date: data.release_date || data.first_air_date
+  };
+}
 
 export default async function handler(req, res) {
   const userId = getUserIdFromReq(req);
@@ -135,6 +157,20 @@ export default async function handler(req, res) {
               [userId]
           )
       ).rows;
+      // Fetch additional details for movies
+      const moviesWithDetails = await Promise.all(
+          moviesRows.map(async (row) => {
+            const details = await fetchFromTMDB(row.item_id, 'tmdb-movie');
+            return { ...row, ...details };
+          })
+      );
+      // Fetch additional details for series
+      const seriesWithDetails = await Promise.all(
+          seriesRows.map(async (row) => {
+            const details = await fetchFromTMDB(row.item_id, 'tmdb-tv');
+            return { ...row, ...details };
+          })
+      );
 
       // Fetch additional details for anime series (including mal_id)
       const animeSeriesWithDetails = await Promise.all(
@@ -153,8 +189,8 @@ export default async function handler(req, res) {
       // Return the top 5 of each combined set
       res.json({
         ok: true,
-        movies: moviesRows,
-        series: seriesRows,
+        movies: moviesWithDetails,
+        series: seriesWithDetails,
         animeMovies: animeMoviesWithDetails.slice(0, 5),
         animeSeries: animeSeriesWithDetails.slice(0, 5),
       });
