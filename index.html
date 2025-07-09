@@ -313,32 +313,43 @@
 
         $(rowId).empty();
         items.slice(0, 5).forEach(item => {
-            // If the server provides some fields for title/poster, try to use them:
+            // Initialize default values
             let poster = 'https://via.placeholder.com/140x120?text=No+Image';
-            let title = '';
+            let title = 'Unknown Title';
             let year = '';
 
+            // TMDB Movies/Series
             if (item.poster_path) {
-                // If it's from tmdb
                 poster = imageUrl + item.poster_path;
-                title = item.title || item.name || '';
-                if (item.first_air_date) {
-                    year = ` (${item.first_air_date.split('-')[0]})`;
-                } else if (item.release_date) {
-                    year = ` (${item.release_date.split('-')[0]})`;
+
+                // For movies
+                if (item.title) {
+                    title = item.title;
+                    if (item.release_date) {
+                        year = ` (${item.release_date.split('-')[0]})`;
+                    }
                 }
-            } else if (item.coverImage) {
-                // If it's from anilist
-                poster = item.coverImage.large || poster;
-                title = item.title_english || item.title_romaji || item.title || '';
+                // For TV series
+                else if (item.name) {
+                    title = item.name;
+                    if (item.first_air_date) {
+                        year = ` (${item.first_air_date.split('-')[0]})`;
+                    }
+                }
+            }
+            // AniList anime
+            else if (item.coverImage && item.coverImage.large) {
+                poster = item.coverImage.large;
+                title = item.title_english || item.title_romaji || 'Unknown Anime';
                 if (item.seasonYear) {
                     year = ` (${item.seasonYear})`;
                 }
             }
 
+            // Construct the continue watching item with the metadata
             $(rowId).append(`
                 <div class="continue-item">
-                    <img class="continue-poster" src="${poster}">
+                    <img class="continue-poster" src="${poster}" alt="${title} poster">
                     <div class="continue-title-short">${title}${year}</div>
                     <button class="continue-btn" onclick="window.location.href='${buttonAction(item.item_id)}'">${buttonLabel}</button>
                 </div>
