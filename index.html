@@ -313,31 +313,28 @@
 
         $(rowId).empty();
         items.slice(0, 5).forEach(item => {
-            // Initialize default values
+            // Default values
             let poster = 'https://via.placeholder.com/140x120?text=No+Image';
             let title = 'Unknown Title';
             let year = '';
 
-            // TMDB Movies/Series
-            if (item.poster_path) {
+            // For TMDB movies
+            if (item.title && item.poster_path) {
                 poster = imageUrl + item.poster_path;
-
-                // For movies
-                if (item.title) {
-                    title = item.title;
-                    if (item.release_date) {
-                        year = ` (${item.release_date.split('-')[0]})`;
-                    }
-                }
-                // For TV series
-                else if (item.name) {
-                    title = item.name;
-                    if (item.first_air_date) {
-                        year = ` (${item.first_air_date.split('-')[0]})`;
-                    }
+                title = item.title;
+                if (item.release_date) {
+                    year = ` (${item.release_date.split('-')[0]})`;
                 }
             }
-            // AniList anime
+            // For TMDB series
+            else if (item.name && item.poster_path) {
+                poster = imageUrl + item.poster_path;
+                title = item.name;
+                if (item.first_air_date) {
+                    year = ` (${item.first_air_date.split('-')[0]})`;
+                }
+            }
+            // For Anime (AniList)
             else if (item.coverImage && item.coverImage.large) {
                 poster = item.coverImage.large;
                 title = item.title_english || item.title_romaji || 'Unknown Anime';
@@ -346,14 +343,13 @@
                 }
             }
 
-            // Construct the continue watching item with the metadata
             $(rowId).append(`
-                <div class="continue-item">
-                    <img class="continue-poster" src="${poster}" alt="${title} poster">
-                    <div class="continue-title-short">${title}${year}</div>
-                    <button class="continue-btn" onclick="window.location.href='${buttonAction(item.item_id)}'">${buttonLabel}</button>
-                </div>
-            `);
+            <div class="continue-item">
+                <img class="continue-poster" src="${poster}" onerror="this.src='https://via.placeholder.com/140x120?text=Error'">
+                <div class="continue-title-short">${title}${year}</div>
+                <button class="continue-btn" onclick="window.location.href='${buttonAction(item.item_id)}'">${buttonLabel}</button>
+            </div>
+        `);
         });
     }
 
