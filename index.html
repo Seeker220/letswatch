@@ -301,7 +301,7 @@
             buttonAction = (id) => `seasons.html?id=${id}`;
         } else if (type === 'anime-movies') {
             rowId = '#continue-anime-movies-row';
-            buttonAction = (id) => `play.html?type=anime-movie&id=${id}&ep=1`;
+            buttonAction = (id) => `play.html?type=anime&id=${id}&ep=1`;
         } else if (type === 'anime-series') {
             rowId = '#continue-anime-series-row';
             buttonAction = (id, malId) => malId
@@ -524,7 +524,7 @@
     }
 
     function playAnimeMovie(id) {
-        window.location.href = `play.html?type=anime-movie&id=${id}&ep=1`;
+        window.location.href = `play.html?type=anime&id=${id}&ep=1`;
     }
 
     function viewSeasons(id) {
