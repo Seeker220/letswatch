@@ -1,6 +1,6 @@
 import { getDbPool } from '../lib/db';
 import jwt from 'jsonwebtoken';
-const axios = require('axios');
+import axios from 'axios/dist/node/axios.cjs';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
 const ANILIST_API_URL = 'https://graphql.anilist.co';
