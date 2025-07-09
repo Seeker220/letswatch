@@ -45,30 +45,10 @@ export default async function handler(req, res) {
               [userId]
           )
       ).rows;
-
-      // Old logic for anime (backwards compatibility)
-      // Anime Movies: item_type='anime', season_number=0
-      const oldAnimeMoviesRows = (
-          await pool.query(
-              `SELECT * FROM watched
-               WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number=0
-               ORDER BY updated_at DESC LIMIT 5`,
-              [userId]
-          )
-      ).rows;
-
-      // Anime Series: item_type='anime', season_number!=0
-      const oldAnimeSeriesRows = (
-          await pool.query(
-              `SELECT * FROM watched
-           WHERE user_id=$1 AND item_type='anime' AND state='watching' AND season_number!=0
-           ORDER BY updated_at DESC LIMIT 5`,
-              [userId]
-          )
-      ).rows;
+      
 
       // New logic for separate anime-movie and anime-series
-      const newAnimeMoviesRows = (
+      const AnimeMoviesRows = (
           await pool.query(
               `SELECT * FROM watched
                WHERE user_id=$1 AND item_type='anime-movie' AND state='watching'
@@ -77,7 +57,7 @@ export default async function handler(req, res) {
           )
       ).rows;
 
-      const newAnimeSeriesRows = (
+      const AnimeSeriesRows = (
           await pool.query(
               `SELECT * FROM watched
            WHERE user_id=$1 AND item_type='anime-series' AND state='watching'
@@ -86,22 +66,15 @@ export default async function handler(req, res) {
           )
       ).rows;
 
-      // Combine old and new anime movies
-      const combinedAnimeMovies = [...oldAnimeMoviesRows, ...newAnimeMoviesRows].sort(
-          (a, b) => b.updated_at - a.updated_at
-      );
-      // Combine old and new anime series
-      const combinedAnimeSeries = [...oldAnimeSeriesRows, ...newAnimeSeriesRows].sort(
-          (a, b) => b.updated_at - a.updated_at
-      );
+
 
       // Return the top 5 of each combined set
       res.json({
         ok: true,
         movies: moviesRows,
         series: seriesRows,
-        animeMovies: combinedAnimeMovies.slice(0, 5),
-        animeSeries: combinedAnimeSeries.slice(0, 5),
+        animeMovies: AnimeMoviesRows.slice(0, 5),
+        animeSeries: AnimeSeriesRows.slice(0, 5),
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'Failed to fetch continue watching.' });
