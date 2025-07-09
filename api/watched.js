@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       // Movies (most recent 5 watching)
       const moviesRows = (
           await pool.query(
-              `SELECT * FROM watched
+              `SELECT DISTINCT ON (item_id) * FROM watched
                WHERE user_id=$1 AND item_type='tmdb-movie' AND state='watching'
                ORDER BY updated_at DESC LIMIT 5`,
               [userId]
@@ -39,7 +39,7 @@ export default async function handler(req, res) {
       // Series (most recent 5 watching)
       const seriesRows = (
           await pool.query(
-              `SELECT * FROM watched
+              `SELECT DISTINCT ON (item_id) * FROM watched
                WHERE user_id=$1 AND item_type='tmdb-tv' AND state='watching'
                ORDER BY updated_at DESC LIMIT 5`,
               [userId]
@@ -50,7 +50,7 @@ export default async function handler(req, res) {
       // New logic for separate anime-movie and anime-series
       const AnimeMoviesRows = (
           await pool.query(
-              `SELECT * FROM watched
+              `SELECT DISTINCT ON (item_id) * FROM watched
                WHERE user_id=$1 AND item_type='anime-movie' AND state='watching'
                ORDER BY updated_at DESC LIMIT 5`,
               [userId]
@@ -59,7 +59,7 @@ export default async function handler(req, res) {
 
       const AnimeSeriesRows = (
           await pool.query(
-              `SELECT * FROM watched
+              `SELECT DISTINCT ON (item_id) * FROM watched
            WHERE user_id=$1 AND item_type='anime-series' AND state='watching'
            ORDER BY updated_at DESC LIMIT 5`,
               [userId]
