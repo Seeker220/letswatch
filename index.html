@@ -292,21 +292,25 @@
     }
 
     function renderContinueSection(type, items) {
-        let rowId, buttonAction;
+        let rowId, buttonAction, buttonText;
         if (type === 'movies') {
             rowId = '#continue-movies-row';
             buttonAction = (id) => `play.html?type=tmdb-movie&id=${id}`;
+            buttonText = 'Play';
         } else if (type === 'series') {
             rowId = '#continue-series-row';
             buttonAction = (id) => `seasons.html?id=${id}`;
+            buttonText = 'View Seasons';
         } else if (type === 'anime-movies') {
             rowId = '#continue-anime-movies-row';
             buttonAction = (id) => `play.html?type=anime&id=${id}&ep=1`;
+            buttonText = 'Play';
         } else if (type === 'anime-series') {
             rowId = '#continue-anime-series-row';
             buttonAction = (id, malId) => malId
                 ? `animeepisodes.html?id=${id}&mal=${malId}`
                 : `animeepisodes.html?id=${id}`;
+            buttonText = 'View Episodes';
         }
 
         $(rowId).empty();
@@ -332,7 +336,7 @@
             <div class="continue-item">
                 <img class="continue-poster" src="${poster}">
                 <div class="continue-title-short">${title}${year}</div>
-                <button class="continue-btn" onclick="window.location.href='${buttonAction(item.id, item.mal_id)}'">Continue</button>
+                <button class="continue-btn" onclick="window.location.href='${buttonAction(item.id, item.mal_id)}'">${buttonText}</button>
             </div>
         `);
         });
