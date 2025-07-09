@@ -292,57 +292,49 @@
     }
 
     function renderContinueSection(type, items) {
-        let rowId, buttonLabel, buttonAction;
+        let rowId, buttonAction;
         if (type === 'movies') {
             rowId = '#continue-movies-row';
-            buttonLabel = 'Play';
             buttonAction = (id) => `play.html?type=tmdb-movie&id=${id}`;
         } else if (type === 'series') {
             rowId = '#continue-series-row';
-            buttonLabel = 'View Seasons';
             buttonAction = (id) => `seasons.html?id=${id}`;
         } else if (type === 'anime-movies') {
             rowId = '#continue-anime-movies-row';
-            buttonLabel = 'Play';
             buttonAction = (id) => `play.html?type=anime-movie&id=${id}&ep=1`;
         } else if (type === 'anime-series') {
             rowId = '#continue-anime-series-row';
-            buttonLabel = 'View Episodes';
-            buttonAction = (id) => `animeepisodes.html?id=${id}`;
+            buttonAction = (id, malId) => malId
+                ? `animeepisodes.html?id=${id}&mal=${malId}`
+                : `animeepisodes.html?id=${id}`;
         }
 
         $(rowId).empty();
         items.slice(0, 5).forEach(item => {
-            // If the server provides some fields for title/poster, try to use them:
             let poster = 'https://via.placeholder.com/140x120?text=No+Image';
             let title = '';
             let year = '';
 
             if (item.poster_path) {
-                // If it's from tmdb
+                // TMDB items
                 poster = imageUrl + item.poster_path;
                 title = item.title || item.name || '';
-                if (item.first_air_date) {
-                    year = ` (${item.first_air_date.split('-')[0]})`;
-                } else if (item.release_date) {
-                    year = ` (${item.release_date.split('-')[0]})`;
-                }
+                year = item.release_date ? ` (${item.release_date.split('-')[0]})` :
+                    item.first_air_date ? ` (${item.first_air_date.split('-')[0]})` : '';
             } else if (item.coverImage) {
-                // If it's from anilist
+                // AniList items
                 poster = item.coverImage.large || poster;
-                title = item.title_english || item.title_romaji || item.title || '';
-                if (item.seasonYear) {
-                    year = ` (${item.seasonYear})`;
-                }
+                title = item.title.english || item.title.romaji || '';
+                year = item.seasonYear ? ` (${item.seasonYear})` : '';
             }
 
             $(rowId).append(`
-                <div class="continue-item">
-                    <img class="continue-poster" src="${poster}">
-                    <div class="continue-title-short">${title}${year}</div>
-                    <button class="continue-btn" onclick="window.location.href='${buttonAction(item.item_id)}'">${buttonLabel}</button>
-                </div>
-            `);
+            <div class="continue-item">
+                <img class="continue-poster" src="${poster}">
+                <div class="continue-title-short">${title}${year}</div>
+                <button class="continue-btn" onclick="window.location.href='${buttonAction(item.id, item.mal_id)}'">Continue</button>
+            </div>
+        `);
         });
     }
 

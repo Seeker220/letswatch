@@ -1,7 +1,9 @@
 import { getDbPool } from '../lib/db';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'devsecret';
+const ANILIST_API_URL = 'https://graphql.anilist.co';
 
 // Helper to get user from JWT
 function getUserIdFromReq(req) {
@@ -13,6 +15,38 @@ function getUserIdFromReq(req) {
   } catch {
     return null;
   }
+}
+
+// Fetch details from AniList
+async function fetchFromAniList(itemId) {
+  const query = `
+    query ($id: Int) {
+      Media(id: $id, type: ANIME) {
+        id
+        idMal
+        title {
+          romaji
+          english
+        }
+        coverImage {
+          large
+        }
+        seasonYear
+      }
+    }
+  `;
+  const response = await axios.post(ANILIST_API_URL, {
+    query,
+    variables: { id: parseInt(itemId, 10) },
+  });
+  const media = response.data.data.Media;
+  return {
+    id: media.id,
+    mal_id: media.idMal,
+    title: media.title,
+    coverImage: media.coverImage,
+    seasonYear: media.seasonYear,
+  };
 }
 
 export default async function handler(req, res) {
@@ -63,10 +97,9 @@ export default async function handler(req, res) {
               [userId]
           )
       ).rows;
-      
 
-      // New logic for separate anime-movie and anime-series
-      const AnimeMoviesRows = (
+      // Anime Movies (most recent 5 watching)
+      const animeMoviesRows = (
           await pool.query(
               `SELECT *
                FROM (
@@ -84,7 +117,8 @@ export default async function handler(req, res) {
           )
       ).rows;
 
-      const AnimeSeriesRows = (
+      // Anime Series (most recent 5 watching)
+      const animeSeriesRows = (
           await pool.query(
               `SELECT *
                FROM (
@@ -102,15 +136,21 @@ export default async function handler(req, res) {
           )
       ).rows;
 
-
+      // Fetch additional details for anime series (including mal_id)
+      const animeSeriesWithDetails = await Promise.all(
+          animeSeriesRows.map(async (row) => {
+            const details = await fetchFromAniList(row.item_id);
+            return { ...row, ...details };
+          })
+      );
 
       // Return the top 5 of each combined set
       res.json({
         ok: true,
         movies: moviesRows,
         series: seriesRows,
-        animeMovies: AnimeMoviesRows.slice(0, 5),
-        animeSeries: AnimeSeriesRows.slice(0, 5),
+        animeMovies: animeMoviesRows.slice(0, 5),
+        animeSeries: animeSeriesWithDetails.slice(0, 5),
       });
     } catch (e) {
       res.status(500).json({ ok: false, error: 'Failed to fetch continue watching.' });
@@ -172,7 +212,7 @@ export default async function handler(req, res) {
       // Remove entry if exists
       await pool.query(
           `DELETE FROM watched
-         WHERE user_id=$1 AND item_type=$2 AND item_id=$3 AND season_number=$4 AND episode_number=$5`,
+           WHERE user_id=$1 AND item_type=$2 AND item_id=$3 AND season_number=$4 AND episode_number=$5`,
           [userId, item_type, String(item_id), season, episode]
       );
       return res.json({ ok: true, deleted: true });
@@ -180,10 +220,10 @@ export default async function handler(req, res) {
       // Upsert watched state
       const { rows } = await pool.query(
           `INSERT INTO watched (user_id, item_type, item_id, season_number, episode_number, state, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, NOW())
-         ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW())
+             ON CONFLICT (user_id, item_type, item_id, season_number, episode_number)
          DO UPDATE SET state=$6, updated_at=NOW()
-         RETURNING *`,
+                           RETURNING *`,
           [userId, item_type, String(item_id), season, episode, state]
       );
       return res.json({ ok: true, row: rows[0] });
