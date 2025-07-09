@@ -90,7 +90,7 @@ export default async function handler(req, res) {
                FROM (
                       SELECT DISTINCT ON (item_id) *
                       FROM watched
-                      WHERE user_id = 1
+                      WHERE user_id = $1
                         AND item_type = 'anime-series'
                         AND state = 'watching'
                       ORDER BY item_id, updated_at DESC
