@@ -147,10 +147,10 @@
       const number = ep.mal_id;
       lastEpisodes.push({ episode_number: number, title });
       const watchedSpan = isLoggedIn
-              ? `<span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">Not Watched</span>`
+              ? `<span class="watched-state watched-not" data-type="anime-series" data-id="${anilistId}" data-episode="${number}">Not Watched</span>`
               : '';
       $('#episodes-results').append(`
-        <li class="episode-item" data-type="anime-episode" data-id="${anilistId}" data-episode="${number}">
+        <li class="episode-item" data-type="anime-series" data-id="${anilistId}" data-episode="${number}">
           <div class="episode-number">Ep ${number}</div>
           <div class="episode-title">${title}</div>
           ${watchedSpan}
@@ -171,10 +171,10 @@
     for (let i = 1; i <= total; i++) {
       lastEpisodes.push({ episode_number: i, title: `Episode ${i}` });
       const watchedSpan = isLoggedIn
-              ? `<span class="watched-state watched-not" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">Not Watched</span>`
+              ? `<span class="watched-state watched-not" data-type="anime-series" data-id="${anilistId}" data-episode="${i}">Not Watched</span>`
               : '';
       $('#episodes-results').append(`
-        <li class="episode-item" data-type="anime-episode" data-id="${anilistId}" data-episode="${i}">
+        <li class="episode-item" data-type="anime-series" data-id="${anilistId}" data-episode="${i}">
           <div class="episode-number">Ep ${i}</div>
           <div class="episode-title">Episode ${i}</div>
           ${watchedSpan}
@@ -250,7 +250,7 @@
   function batchUpdateWatchedAnimeEpisodes() {
     if (!lastEpisodes.length) return;
     const items = lastEpisodes.map(ep => ({
-      item_type: "anime-episode",
+      item_type: "anime-series",
       item_id: anilistId,
       episode_number: ep.episode_number
     }));
@@ -264,7 +264,7 @@
               if (!data.states) return;
               items.forEach(item => {
                 const key = watchedKey(item.item_type, item.item_id, item.episode_number);
-                const $el = $('.watched-state[data-type="anime-episode"][data-id="' + item.item_id + '"][data-episode="' + item.episode_number + '"]');
+                const $el = $('.watched-state[data-type="anime-series"][data-id="' + item.item_id + '"][data-episode="' + item.episode_number + '"]');
                 const state = data.states[key] || "not_watched";
                 $el.removeClass("watched-not watched-watching watched-watched")
                         .addClass(watchedStateClass(state))

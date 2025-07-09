@@ -127,10 +127,10 @@
             const seasonNumber = season.season_number;
             const seasonName = season.name && season.name !== `Season ${seasonNumber}` ? `: ${season.name}` : '';
             const watchedStateSpan = isLoggedIn
-                ? `<span class="watched-state watched-not" data-type="tmdb-tv-season" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="event.stopPropagation(); handleWatchedClick(this);"></span>`
+                ? `<span class="watched-state watched-not" data-type="tmdb-tv" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="event.stopPropagation(); handleWatchedClick(this);"></span>`
                 : '';
             const seasonHtml = `
-                <li class="season-item" data-type="tmdb-tv-season" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="goToEpisodes(${seasonNumber})">
+                <li class="season-item" data-type="tmdb-tv" data-id="${tmdbId}" data-season="${seasonNumber}" onclick="goToEpisodes(${seasonNumber})">
                     <div class="season-title">Season ${seasonNumber}${seasonName}</div>
                     ${watchedStateSpan}
                 </li>
@@ -153,7 +153,7 @@
     function batchUpdateWatchedSeasons() {
         if (!lastSeasons.length) return;
         const items = lastSeasons.map(season => ({
-            item_type: "tmdb-tv-season",
+            item_type: "tmdb-tv",
             item_id: tmdbId,
             season_number: season.season_number
         }));
@@ -168,7 +168,7 @@
                 items.forEach(item => {
                     const key = watchedKey(item.item_type, item.item_id, item.season_number);
                     const state = data.states[key] || "not_watched";
-                    const $el = $('.watched-state[data-type="tmdb-tv-season"][data-id="' + item.item_id + '"][data-season="' + item.season_number + '"]');
+                    const $el = $('.watched-state[data-type="tmdb-tv"][data-id="' + item.item_id + '"][data-season="' + item.season_number + '"]');
                     $el.removeClass("watched-not watched-watching watched-watched")
                         .addClass(watchedStateClass(state))
                         .text(watchedStateText(state));

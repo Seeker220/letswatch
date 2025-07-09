@@ -140,10 +140,10 @@
             const posterUrl = episode.still_path ? `https://image.tmdb.org/t/p/w200${episode.still_path}` : 'https://via.placeholder.com/200x300?text=No+Image';
             const episodeNumber = episode.episode_number;
             const watchedStateSpan = isLoggedIn
-                ? `<span class="watched-state watched-not" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">Not Watched</span>`
+                ? `<span class="watched-state watched-not" data-type="tmdb-tv" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">Not Watched</span>`
                 : '';
             const episodeHtml = `
-                <li class="episode-item" data-type="tmdb-tv-episode" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">
+                <li class="episode-item" data-type="tmdb-tv" data-id="${tmdbId}" data-season="${seasonNumber}" data-episode="${episodeNumber}">
                     <img src="${posterUrl}" alt="${episode.name} poster" class="episode-poster">
                     <div class="episode-number">Ep - ${episodeNumber}</div>
                     <div class="episode-title">${episode.name}</div>
@@ -168,7 +168,7 @@
     function batchUpdateWatchedEpisodes() {
         if (!lastEpisodes.length) return;
         const items = lastEpisodes.map(ep => ({
-            item_type: "tmdb-tv-episode",
+            item_type: "tmdb-tv",
             item_id: tmdbId,
             season_number: Number(seasonNumber),
             episode_number: ep.episode_number
@@ -184,7 +184,7 @@
                 items.forEach(item => {
                     const key = watchedKey(item.item_type, item.item_id, item.season_number, item.episode_number);
                     const state = data.states[key] || "not_watched";
-                    const $el = $('.watched-state[data-type="tmdb-tv-episode"][data-id="' + item.item_id + '"][data-season="' + item.season_number + '"][data-episode="' + item.episode_number + '"]');
+                    const $el = $('.watched-state[data-type="tmdb-tv"][data-id="' + item.item_id + '"][data-season="' + item.season_number + '"][data-episode="' + item.episode_number + '"]');
                     $el.removeClass("watched-not watched-watching watched-watched")
                         .addClass(watchedStateClass(state))
                         .text(watchedStateText(state));
