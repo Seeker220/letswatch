@@ -80,7 +80,7 @@
 
     const embedServers = {
       'tmdb-movie': [
-        ['FMovies+', `https://www.fmovies.cat/watch/movie/${id}`],
+        ['FMovies+', `https://www.fmovies.gd/watch/movie/${id}`],
         ['RiveStream', `https://rivestream.org/watch?type=movie&id=${id}`],
         ['XPrime', `https://xprime.tv/watch/${id}`],
         ['SmashyStream', null], // to be filled via IMDb
@@ -88,7 +88,7 @@
         ['VidSrc', `https://vidsrc.cc/v2/embed/movie/${id}?autoPlay=true`],
       ],
       'tmdb-tv': [
-        ['FMovies+', `https://www.fmovies.cat/watch/tv/${id}/${season}/${episode}`],
+        ['FMovies+', `https://www.fmovies.gd/watch/tv/${id}/${season}/${episode}`],
         ['RiveStream', `https://rivestream.org/watch?type=tv&id=${id}&season=${season}&episode=${episode}`],
         ['XPrime', `https://xprime.tv/watch/${id}/${season}/${episode}`],
         ['SmashyStream', null], // to be filled via IMDb
@@ -96,10 +96,10 @@
         ['VidSrc', `https://vidsrc.cc/v2/embed/tv/${id}/${season}/${episode}?autoPlay=true`],
       ],
       'anime': [
-        ['Miruro', `https://www.miruro.to/watch?id=${id}&ep=${ep}`],
+        ['Miruro', `https://www.miruro.online/watch?id=${id}&ep=${ep}`],
         ['Gojo', `https://animetsu.to/watch/${id}?ep=${ep}`],
         ['Anime Realms', `https://www.animerealms.org/watch?id=${id}&ep=${ep}`],
-        ['Cinemaos', `https://cinemaos.live/anime/${id}`],
+        ['Cinemaos', `https://cinemaos.tech/anime/${id}`],
         ['AniPlay', `https://aniplaynow.live/anime/watch/${id}?host=pahe&ep=${ep}&type=sub`],
         ['VidSrc', `https://vidsrc.cc/v2/embed/anime/ani${id}/${ep}/sub?autoPlay=true`],
       ]
@@ -107,13 +107,13 @@
 
     const externalServers = {
       'tmdb-movie': [
-        ['P-Stream', `https://pstream.org/media/tmdb-movie-${id}`],
+        ['P-Stream', `https://pstream.mov/media/tmdb-movie-${id}`],
         ['Cineby', `https://www.cineby.app/movie/${id}?play=true`],
         ['BitCine', `https://www.bitcine.app/movie/${id}?play=true`],
         ['VeloraTV', `https://veloratv.ru/watch/movie/${id}`],
       ],
       'tmdb-tv': [
-        ['P-Stream', `https://pstream.org/media/tmdb-tv-${id}`],
+        ['P-Stream', `https://pstream.mov/media/tmdb-tv-${id}`],
         ['Cineby', `https://www.cineby.app/tv/${id}/${season}/${episode}?play=true`],
         ['BitCine', `https://www.bitcine.app/tv/${id}/${season}/${episode}?play=true`],
         ['VeloraTV', `https://veloratv.ru/watch/tv/${id}/${season}/${episode}`],
